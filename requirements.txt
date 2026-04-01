@@ -9,3 +9,5 @@ gradio
 python-dotenv
 alembic
 psycopg2-binary
+httpx
+langsmith
