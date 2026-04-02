@@ -1,3 +1,20 @@
+//create virtual env python to project:
+$ python3 -m venv .venv
+$ source .venv/bin/activate
+
+
+//install libreries:
+$ pip install --upgrade pip
+$ pip install -r requirements.txt
+
+
+//deploy app:
+$ export PYTHONPATH=$PYTHONPATH:.
+$ python3 ui/gradio_app.py
+
+
+
+
 /
   shopify_agent/
     db.py
@@ -101,3 +118,55 @@
 
   Opción B: Logging de Python (Consola)
   Para ver logs tradicionales en tu terminal, vamos a configurar el logging estándar de Python en ui/gradio_app.py.
+
+
+  ¡Qué bueno que haya funcionado! Tienes toda la razón en fijarte en eso. Como Ingeniero Senior, te confirmo que sí implementé el
+  patrón ReAct, pero quizás la forma en que LangGraph lo estructura puede parecer sutil si no ves el nombre de la función
+  inmediatamente.
+
+  Revisemos el código actual en shopify_agent/graph.py:
+
+    1 # 3. Nodos del Grafo
+    2 async def call_model(state: AgentState, config):
+    3     # ... razonamiento del LLM ...
+    4     response = await llm.ainvoke(messages, config)
+    5     return {"messages": [response]}
+    6
+    7 def should_continue(state: AgentState) -> Literal["tools", END]:
+    8     last_message = state["messages"][-1]
+    9     # SI HAY TOOL_CALLS -> SIGUE A TOOLS (ACT)
+   10     if last_message.tool_calls:
+   11         return "tools"
+   12     # SI NO -> TERMINA (REASONING FINAL)
+   13     return END
+   14
+   15 # 4. Configurar el flujo (ReAct loop)
+   16 workflow = StateGraph(AgentState)
+   17 workflow.add_node("agent", call_model) # REASONING
+   18 workflow.add_node("tools", tool_node)  # ACTING
+   19
+   20 workflow.add_edge(START, "agent")
+   21 workflow.add_conditional_edges("agent", should_continue) # EL CEREBRO DEL REACT
+   22 workflow.add_edge("tools", "agent") # VUELVE A RAZONAR TRAS ACTUAR
+
+  ¿Por qué esto es ReAct?
+  El patrón ReAct (Reasoning + Acting) se basa en un bucle:
+   1. Reasoning: El nodo agent recibe la consulta y decide si necesita información externa (genera una tool_call).
+   2. Acting: Si el should_continue ve una tool_call, envía el flujo al nodo tools.
+   3. Observation: Las herramientas se ejecutan y el resultado vuelve al agent.
+   4. Final Reasoning: El agent observa el resultado de la herramienta y decide si ya tiene la respuesta final para el usuario o
+      si necesita "actuar" de nuevo.
+
+  Si ves en tu log de consola esto:
+
+   1 19:48:21 [INFO] ... Enviando mensajes al Grafo...
+   2 19:48:24 [INFO] ... Buscando pedidos pendientes... (Acting)
+   3 19:48:25 [INFO] ... Respuesta generada... (Final Reasoning)
+  Ese "salto" entre el modelo y la herramienta es precisamente el patrón ReAct en acción.
+
+  Dato de optimización: Al usar gpt-4o-mini con bind_tools, el modelo es extremadamente eficiente siguiendo este patrón, lo que
+  nos permite mantener los costos bajos mientras el agente "piensa" antes de responder.
+
+  ¿Te gustaría que añadamos un paso de "Aprobación Humana" (HITL) para ciertas acciones sensibles, como por ejemplo si el agente
+  quisiera cancelar un pedido?
+

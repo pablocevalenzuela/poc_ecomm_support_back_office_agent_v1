@@ -13,73 +13,52 @@ HEADERS = {
     "Content-Type": "application/json",
 }
 
-
 @tool
 async def get_shopify_product_details(inventory_item_id: str):
     """
-    Consulta la API GraphQL de Shopify para obtener el título, SKU y Vendor
-    a partir de un inventory_item_id.
+    Obtiene detalles técnicos (SKU, Título, Vendor) de un ítem de inventario.
     """
-    if not str(inventory_item_id).startswith("gid://"):
-        gid = f"gid://shopify/InventoryItem/{inventory_item_id}"
-    else:
-        gid = inventory_item_id
-
-    logger.info(f"Consultando detalles para GID: {gid}")
-
+    gid = f"gid://shopify/InventoryItem/{inventory_item_id}" if not str(inventory_item_id).startswith("gid://") else inventory_item_id
     query = """
     query($id: ID!) {
       inventoryItem(id: $id) {
         sku
         variant {
           title
-          product {
-            title
-            vendor
-          }
+          product { title vendor }
         }
       }
     }
     """
-
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(settings.shopify_url, json={'query': query, 'variables': {'id': gid}}, headers=HEADERS)
             data = response.json()
-
-            if "errors" in data:
-                logger.error(f"Errores GraphQL: {data['errors']}")
-                return f"Error en Shopify: {data['errors'][0]['message']}"
-
-            item = data.get("data", {}).get("inventoryItem")
-            if not item:
-                return f"No se encontró información para el ID {inventory_item_id}"
-
+            if not data or not data.get("data"): return f"No se encontró información para el ID {inventory_item_id}"
+            item = data["data"].get("inventoryItem")
+            if not item: return f"No se encontró el ítem {inventory_item_id}"
             variant = item.get("variant", {})
             product = variant.get("product", {})
-            full_title = f"{product.get('title')} ({variant.get('title')})" if variant.get(
-                "title") != "Default Title" else product.get("title")
-
-            return {
-                "title": full_title,
-                "sku": item.get("sku"),
-                "vendor": product.get("vendor")
-            }
+            title = f"{product.get('title')} ({variant.get('title')})" if variant.get("title") != "Default Title" else product.get("title")
+            return {"title": title, "sku": item.get("sku"), "vendor": product.get("vendor")}
         except Exception as e:
-            return f"Error de conexión: {str(e)}"
-
+            return f"Error: {str(e)}"
 
 @tool
-async def get_stock_by_sku(sku: str) -> str:
-    """Consulta el stock disponible de un producto en Shopify usando su SKU."""
-    logger.info(f"Buscando stock para SKU: {sku}")
+async def get_stock_by_sku(product_name_or_sku: str) -> str:
+    """
+    Consulta el stock disponible de un producto. 
+    Acepta tanto el SKU exacto como el nombre del producto (ej: 'nimbus' o 'queso nimbus').
+    """
+    logger.info(f"Buscando stock para: {product_name_or_sku}")
     query = """
-    query getProductVariant($sku: String!) {
-      productVariants(first: 1, query: $sku) {
+    query getProductVariant($query: String!) {
+      productVariants(first: 5, query: $query) {
         edges {
           node {
             displayName
             inventoryQuantity
+            sku
           }
         }
       }
@@ -87,25 +66,27 @@ async def get_stock_by_sku(sku: str) -> str:
     """
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.post(settings.shopify_url, json={"query": query, "variables": {"sku": sku}}, headers=HEADERS)
+            response = await client.post(settings.shopify_url, json={"query": query, "variables": {"query": product_name_or_sku}}, headers=HEADERS)
             data = response.json()
+            edges = data.get("data", {}).get("productVariants", {}).get("edges", []) if data and data.get("data") else []
+            
+            if not edges and " " in product_name_or_sku:
+                last_word = product_name_or_sku.split()[-1]
+                logger.info(f"Reintentando stock con: '{last_word}'")
+                response = await client.post(settings.shopify_url, json={"query": query, "variables": {"query": last_word}}, headers=HEADERS)
+                data = response.json()
+                edges = data.get("data", {}).get("productVariants", {}).get("edges", []) if data and data.get("data") else []
 
-            edges = data.get("data", {}).get(
-                "productVariants", {}).get("edges", [])
-            if not edges:
-                return f"No se encontró el producto con SKU: {sku}"
-
-            variant = edges[0]["node"]
-            return f"Producto: {variant['displayName']}, Stock: {variant['inventoryQuantity']}"
+            if not edges: return f"No encontré stock para '{product_name_or_sku}'."
+            res = [f"- {e['node']['displayName']} (SKU: {e['node']['sku']}): {e['node']['inventoryQuantity']} uds" for e in edges]
+            return "Resultados de stock:\n" + "\n".join(res)
         except Exception as e:
             return f"Error al consultar stock: {str(e)}"
 
-
 @tool
 async def get_order_status(order_name: str) -> str:
-    """Consulta el estado de un pedido específico en Shopify usando su nombre (ej: #1001)."""
+    """Obtiene el estado de un pedido específico por su nombre (ej: '#1001')."""
     clean_name = order_name.replace("#", "")
-    logger.info(f"Consultando pedido específico: {clean_name}")
     query = """
     query getOrder($query: String!) {
       orders(first: 1, query: $query) {
@@ -123,36 +104,28 @@ async def get_order_status(order_name: str) -> str:
         try:
             response = await client.post(settings.shopify_url, json={"query": query, "variables": {"query": f"name:{clean_name}"}}, headers=HEADERS)
             data = response.json()
-
-            orders = data.get("data", {}).get("orders", {}).get("edges", [])
-            if not orders:
-                return f"No se encontró ningún pedido con el nombre {order_name}."
-
+            orders = data.get("data", {}).get("orders", {}).get("edges", []) if data and data.get("data") else []
+            if not orders: return f"No encontré el pedido {order_name}."
             order = orders[0]["node"]
             return f"Pedido {order['name']}: Pago {order['displayFinancialStatus']}, Envío {order['displayFulfillmentStatus']}."
         except Exception as e:
-            return f"Error al consultar pedido: {str(e)}"
-
+            return f"Error: {str(e)}"
 
 @tool
-async def search_orders_by_product(sku: str) -> str:
+async def search_orders_by_product(product_term: str) -> str:
     """
-       Busca pedidos pendientes (unfulfilled) que contengan un producto específico por su SKU.
-
-       Args:
-          sku: Es el identificador de un producto o artículo en la tienda online Shopify.
+    Busca pedidos pendientes (no preparados) que contengan un producto específico.
+    Acepta SKU o parte del nombre del producto.
     """
-
-    logger.info(f"Buscando pedidos pendientes con SKU: {sku}")
-
-    # Buscamos pedidos unfulfilled que coincidan con el SKU
+    logger.info(f"Iniciando búsqueda profunda de pedidos para: {product_term}")
+    
+    # Obtenemos los últimos 50 pedidos pendientes (unfulfilled)
     query = """
-    query($query: String!) {
-      orders(first: 10, query: $query) {
+    {
+      orders(first: 50, query: "fulfillment_status:unfulfilled") {
         edges {
           node {
             name
-            displayFulfillmentStatus
             lineItems(first: 20) {
               edges {
                 node {
@@ -166,23 +139,52 @@ async def search_orders_by_product(sku: str) -> str:
       }
     }
     """
-    # Filtramos por pedidos NO preparados y que contengan el SKU
-    search_query = f"fulfillment_status:unfulfilled sku:{sku}"
-
+    
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.post(settings.shopify_url, json={"query": query, "variables": {"query": search_query}}, headers=HEADERS)
+            response = await client.post(settings.shopify_url, json={"query": query}, headers=HEADERS)
             data = response.json()
+            
+            if not data or not data.get("data"):
+                return "Error al obtener pedidos de Shopify."
 
-            orders_edges = data.get("data", {}).get(
-                "orders", {}).get("edges", [])
-            if not orders_edges:
-                return f"No hay pedidos pendientes que incluyan el producto con SKU: {sku}"
+            orders = data["data"].get("orders", {}).get("edges", [])
+            if not orders:
+                return "No hay pedidos pendientes (unfulfilled) en la tienda actualmente."
 
-            order_names = [edge["node"]["name"] for edge in orders_edges]
-            return f"Se encontraron {len(order_names)} pedidos pendientes con este producto: {', '.join(order_names)}."
+            term_lower = product_term.lower()
+            matching_orders = []
+
+            # Filtrado manual infalible en Python
+            for edge in orders:
+                order = edge["node"]
+                found_in_order = False
+                items_matched = []
+                
+                for item_edge in order["lineItems"]["edges"]:
+                    item = item_edge["node"]
+                    sku = (item.get("sku") or "").lower()
+                    title = (item.get("title") or "").lower()
+                    
+                    if term_lower in sku or term_lower in title:
+                        found_in_order = True
+                        items_matched.append(f"{item['title']} (SKU: {item['sku']})")
+                
+                if found_in_order:
+                    matching_orders.append(f"- Pedido {order['name']}: incluye {', '.join(items_matched)}")
+
+            if not matching_orders:
+                # Si no hubo match exacto y hay espacios, intentamos con la última palabra
+                if " " in product_term:
+                    last_word = product_term.split()[-1]
+                    logger.info(f"Reintentando filtrado con palabra clave: '{last_word}'")
+                    return await search_orders_by_product(last_word)
+                return f"No encontré ningún pedido pendiente que contenga '{product_term}' en sus ítems."
+
+            return f"He encontrado {len(matching_orders)} pedido(s) pendiente(s) con '{product_term}':\n" + "\n".join(matching_orders)
+
         except Exception as e:
-            return f"Error al buscar pedidos por producto: {str(e)}"
+            logger.error(f"Error en search_orders_by_product: {str(e)}")
+            return f"Error técnico al buscar pedidos: {str(e)}"
 
-tools = [get_shopify_product_details, get_stock_by_sku,
-         get_order_status, search_orders_by_product]
+tools = [get_shopify_product_details, get_stock_by_sku, get_order_status, search_orders_by_product]
