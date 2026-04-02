@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+sqlalchemy
+asyncpg
+pydantic-settings
+langgraph
+langchain-openai
+gradio
+python-dotenv
+alembic
+psycopg2-binary
+httpx
+langsmith

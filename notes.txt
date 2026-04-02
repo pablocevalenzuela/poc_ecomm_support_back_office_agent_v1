@@ -1,0 +1,272 @@
+//create virtual env python to project:
+$ python3 -m venv .venv
+$ source .venv/bin/activate
+
+
+//install libreries:
+$ pip install --upgrade pip
+$ pip install -r requirements.txt
+
+
+//deploy app:
+$ export PYTHONPATH=$PYTHONPATH:.
+$ python3 ui/gradio_app.py
+
+
+
+
+/
+  shopify_agent/
+    db.py
+    models.py
+    settings.py
+    graph.py
+    prompts.py
+    hitl.py
+    state.py
+    tools.py
+  api/
+    main.py
+  webhook/
+    main.py
+  ui/
+    gradio_app.py
+  alembic/
+  alembic.ini
+  requirements.txt
+  Dockerfile
+  .github/workflows/deploy.yml
+  .env.example
+
+
+
+  Sigue estos comandos en tu terminal desde la raíz del proyecto (poc_ecomm_support_back_office_agent_v1/):
+
+  Paso A: Crear el Entorno Virtual
+  Para cumplir con GEMINI.md, lo llamaremos .venv para que esté segregado:
+   1 python3 -m venv .venv
+
+  Paso B: Activar el Entorno Virtual
+  (Si cierras la terminal, deberás volver a ejecutar este paso para que Python use las librerías del proyecto).
+   1 source .venv/bin/activate
+  Verás que aparece (.venv) al inicio de tu línea de comandos.
+
+  Paso C: Instalar Dependencias
+   1 pip install --upgrade pip
+   2 pip install -r requirements.txt
+
+  Paso D: Verificar Variables de Entorno
+  Asegúrate de que tu archivo .env.develop tenga los valores correctos para Shopify y OpenAI:
+
+   1 # .env.develop
+   2 SHOPIFY_STORE_NAME=tu-tienda-nombre
+   3 SHOPIFY_ADMIN_ACCESS_TOKEN=shpat_xxxxxxxxxxxxxxxx
+   4 OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxx
+
+  Paso E: Lanzar la Interfaz de Gradio
+  Una vez instalado todo, simplemente corre:
+   1 export PYTHONPATH=$PYTHONPATH:.
+   2 python3 ui/gradio_app.py
+  He añadido export PYTHONPATH=$PYTHONPATH:. para que Python encuentre el módulo shopify_agent correctamente desde la carpeta
+  ui/.
+
+  3. ¿Cómo probarlo?
+   1. Abre tu navegador en: http://localhost:7860.
+   2. Escribe: "¿Cuánto stock tenemos del SKU 'BOTAS-CUERO-01'?".
+   3. Escribe: "¿En qué estado está el pedido #1020?".
+
+  Nota Senior: Si ves un error de "ModuleNotFoundError", es porque el PYTHONPATH no está apuntando a la raíz. El comando del
+  Paso E soluciona esto temporalmente. Si quieres dejarlo permanente en tu terminal, puedes agregarlo a tu .zshrc.
+
+  ¿Quieres que te ayude a configurar una pequeña prueba unitaria para verificar la conexión con Shopify antes de lanzar la UI?
+                                                                                                                ? for shortcuts 
+────────────────────────
+
+¿como puedo ver el log en tiempo real? y ¿porque preferiste usar settings.py en vez de os.getenv("GITHUB_TOKEN")?                                    
+▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+✦ Como Ingeniero Senior, te explico las razones técnicas detrás de estas decisiones arquitectónicas:
+
+  1. ¿Por qué settings.py (Pydantic Settings) en lugar de os.getenv?
+
+  Usar Pydantic Settings (settings.py) es el estándar de oro en proyectos modernos de Python (FastAPI/Django) por varias razones críticas:
+
+   * Validación Temprana (Fail-Fast): Con os.getenv, si olvidas una variable, el código fallará mucho después, quizás en mitad de una llamada a la API.
+     Pydantic valida al arrancar la aplicación: si falta algo crítico o tiene un tipo incorrecto (ej: esperas un int y llega un str), la app ni siquiera
+     sube, lo que ahorra horas de debugging.
+   * Centralización: Tienes un único lugar para ver todas las configuraciones del sistema. No tienes que buscar por todo el código dónde se llamó a
+     os.getenv.
+   * Tipado (IntelliSense): Al usar settings.github_token, tu editor (VS Code/Cursor) sabe que es un string y te da autocompletado. Con
+     os.getenv("GITHUB_TOKEN"), el editor no sabe qué es.
+   * Gestión de Entornos: Pydantic permite cargar automáticamente diferentes archivos .env (como tu .env.develop) de forma transparente según la
+     configuración.
+
+  ---
+
+  2. ¿Cómo ver el log en tiempo real?
+
+  Para ver qué está pasando "bajo el capó" (las llamadas a Shopify, el razonamiento de LangGraph, etc.), tienes tres opciones profesionales:
+
+  Opción A: LangSmith (Recomendado para Agentic Systems)
+  Si quieres ver el grafo de LangGraph en una interfaz visual espectacular (pasos, latencia, costos):
+   1. Crea una cuenta en smith.langchain.com (https://smith.langchain.com/).
+   2. Agrega esto a tu .env.develop:
+
+   1     LANGCHAIN_TRACING_V2=true
+   2     LANGCHAIN_API_KEY=ls__xxxxxxxxxxxxxxxx
+   3     LANGCHAIN_PROJECT="Shopify-Agent-Dev"
+   3. Reinicia tu app. Verás cada paso del ReAct en tiempo real en la web.
+
+  Opción B: Logging de Python (Consola)
+  Para ver logs tradicionales en tu terminal, vamos a configurar el logging estándar de Python en ui/gradio_app.py.
+
+
+  ¡Qué bueno que haya funcionado! Tienes toda la razón en fijarte en eso. Como Ingeniero Senior, te confirmo que sí implementé el
+  patrón ReAct, pero quizás la forma en que LangGraph lo estructura puede parecer sutil si no ves el nombre de la función
+  inmediatamente.
+
+  Revisemos el código actual en shopify_agent/graph.py:
+
+    1 # 3. Nodos del Grafo
+    2 async def call_model(state: AgentState, config):
+    3     # ... razonamiento del LLM ...
+    4     response = await llm.ainvoke(messages, config)
+    5     return {"messages": [response]}
+    6
+    7 def should_continue(state: AgentState) -> Literal["tools", END]:
+    8     last_message = state["messages"][-1]
+    9     # SI HAY TOOL_CALLS -> SIGUE A TOOLS (ACT)
+   10     if last_message.tool_calls:
+   11         return "tools"
+   12     # SI NO -> TERMINA (REASONING FINAL)
+   13     return END
+   14
+   15 # 4. Configurar el flujo (ReAct loop)
+   16 workflow = StateGraph(AgentState)
+   17 workflow.add_node("agent", call_model) # REASONING
+   18 workflow.add_node("tools", tool_node)  # ACTING
+   19
+   20 workflow.add_edge(START, "agent")
+   21 workflow.add_conditional_edges("agent", should_continue) # EL CEREBRO DEL REACT
+   22 workflow.add_edge("tools", "agent") # VUELVE A RAZONAR TRAS ACTUAR
+
+  ¿Por qué esto es ReAct?
+  El patrón ReAct (Reasoning + Acting) se basa en un bucle:
+   1. Reasoning: El nodo agent recibe la consulta y decide si necesita información externa (genera una tool_call).
+   2. Acting: Si el should_continue ve una tool_call, envía el flujo al nodo tools.
+   3. Observation: Las herramientas se ejecutan y el resultado vuelve al agent.
+   4. Final Reasoning: El agent observa el resultado de la herramienta y decide si ya tiene la respuesta final para el usuario o
+      si necesita "actuar" de nuevo.
+
+  Si ves en tu log de consola esto:
+
+   1 19:48:21 [INFO] ... Enviando mensajes al Grafo...
+   2 19:48:24 [INFO] ... Buscando pedidos pendientes... (Acting)
+   3 19:48:25 [INFO] ... Respuesta generada... (Final Reasoning)
+  Ese "salto" entre el modelo y la herramienta es precisamente el patrón ReAct en acción.
+
+  Dato de optimización: Al usar gpt-4o-mini con bind_tools, el modelo es extremadamente eficiente siguiendo este patrón, lo que
+  nos permite mantener los costos bajos mientras el agente "piensa" antes de responder.
+
+  ¿Te gustaría que añadamos un paso de "Aprobación Humana" (HITL) para ciertas acciones sensibles, como por ejemplo si el agente
+  quisiera cancelar un pedido?
+
+
+
+//pending features and improvements
+1- al preguntar ¿tengo algún pedido pendiente que incluye el producto con sku 3829389283?, no recibo respuesta esperada sino
+Lamentablemente, no he podido obtener información sobre los pedidos pendientes que
+incluyen el queso Nimbus. Puede que haya un problema temporal con la conexión a Shopify. 
+Te recomendaría intentar nuevamente más tarde o verificar manualmente en el sistema de pedidos. Si necesitas ayuda con otra cosa, házmelo saber.
+
+
+2- al preguntar por pedidos pendientes por pagar, tengo problemas:
+
+¿tengo pedidos pendiente por preparar y ya pagados?
+
+Lamentablemente, sigo teniendo problemas para obtener la información sobre los pedidos pendientes.
+Te recomendaría verificar directamente en tu panel de control de Shopify para ver si hay pedidos pendientes por preparar. Si necesitas ayuda con algo más, no dudes en decírmelo.
+
+
+
+
+
+
+
+//key info:
+entry-point is api/main.py
+
+URLs:
+API Principal: http://localhost:8000/
+Interfaz de Back-office (Gradio): http://localhost:8000/ui
+Documentación Interactiva (Swagger): http://localhost:8000/docs
+
+
+//set up cloud run in GCP:
+
+GCP_WIF_PROVIDER: projects/1066396832454/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+export SA_EMAIL="github-deploy-sa@poc-shopify-ai-agent-v1.iam.gserviceaccount.com"
+GCP_WIF_SERVICE_ACCOUNT:github-deploy-sa@poc-shopify-ai-agent-v1.iam.gserviceaccount.com
+
+
+
+  ┌────────────────────────────┬───────────────────────────────────────────────────────────────┐
+  │ Secreto en GitHub          │ Descripción                                                   │
+  ├────────────────────────────┼───────────────────────────────────────────────────────────────┤
+  │ OPENAI_API_KEY             │ Tu API Key de OpenAI (para el modelo GPT).                    │
+  │ DATABASE_URL               │ La URL de conexión a tu base de datos (PostgreSQL/Supabase).  │
+  │ LANGCHAIN_API_KEY          │ Tu API Key de LangSmith (para Observabilidad).                │
+  │ LANGCHAIN_PROJECT          │ El nombre del proyecto en LangSmith (ej: shopify-agent-prod). │
+  │ SHOPIFY_STORE_NAME         │ El nombre de tu tienda (ej: mi-tienda.myshopify.com).         │
+  │ SHOPIFY_ADMIN_ACCESS_TOKEN │ El Admin Access Token de tu App de Shopify.                   │
+  │ SHOPIFY_API_VERSION        │ La versión de la API de Shopify (ej: 2024-01).                │
+  └────────────────────────────┴───────────────────────────────────────────────────────────────┘
+
+
+
+
+
+
+
+por favor, necesito que te comportes y seas un ingeniero de software e IA senior, 
+con experiencia en LangGraph, GCP, senior en Python, Agentic Systems para que me ayudes con lo siguiente: 
+
+1-Tengo un proof of concept(PoC) en Gradio y es donde el usuario hace consulta de stock para un producto por su nombre y SKU y estado de un pedido según el Id del pedido en una tienda online Shopify, esto funciona. 
+
+2-Mi duda es como optimizar mis Agentes de LangGraph que utilizan el patron agentico ReAct y necesito optimizar el uso y el costo por token para llevarlo controlado, ayúdame con esto. 
+
+3-Tengo mi app agentica corriendo en mi localhost por ahora y necesitaré desplegarla en algun servicio de GCP similar a Lambda de AWS pero en GCP, dame sugerencias de expertos y el paso a paso para 
+
+
+
+
+
+
+  Copia el PROJECT_ID y ejecutas esto (sustituyendo tu-id-de-proyecto):
+
+export GCP_PROJECT_ID="tu-id-de-proyecto"
+gcloud config set project $GCP_PROJECT_ID
+
+
+# 1. Crea un Pool de Identidad para GitHub
+gcloud iam workload-identity-pools create "github-pool" \
+    --project="${GCP_PROJECT_ID}" \
+    --location="global" \
+    --display-name="GitHub Pool"
+    
+# 2. Crea el Proveedor dentro del Pool
+gcloud iam workload-identity-pools providers create-oidc "github-provider" \
+    --project="${GCP_PROJECT_ID}" \
+    --location="global" \
+    --workload-identity-pool="github-pool" \
+    --display-name="GitHub Provider" \
+    --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository" \
+    --issuer-uri="https://token.actions.githubusercontent.com"
+  
+# 3. Permite que GitHub use tu Service Account (Sustituye REPO y SA_EMAIL)
+# REPO: tu-usuario/tu-repositorio
+# SA_EMAIL: la que creaste en el paso anterior
+gcloud iam service-accounts add-iam-policy-binding "tu-service-account@${GCP_PROJECT_ID}.iam.gserviceaccount.com" \
+    --project="${GCP_PROJECT_ID}" \
+    --role="roles/iam.workloadIdentityUser" \
+    --member="principalSet://iam.googleapis.com/projects/$(gcloud projects list --filter="${GCP_PROJECT_ID}"
+    --format="value(projectNumber)")/locations/global/workloadIdentityPools/github-pool/attribute.repository/tu-usuario/tu-repositorio"

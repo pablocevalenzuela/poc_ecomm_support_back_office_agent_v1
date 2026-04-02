@@ -1,0 +1,104 @@
+name: Deploy Unified Shopify Agent to Cloud Run
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'api/**'
+      - 'ui/**'
+      - 'shopify_agent/**'
+      - 'requirements.txt'
+      - 'Dockerfile'
+      - '.github/workflows/**'
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  SERVICE_NAME: ${{ secrets.CLOUD_RUN_SERVICE_NAME || 'shopify-agent' }}
+  REGION: ${{ secrets.GCP_REGION || 'us-central1' }}
+
+jobs:
+  deploy:
+    name: Build & Deploy Unified Agent
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: "${{ secrets.GCP_WIF_PROVIDER }}"
+          service_account: "${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}"
+
+      - name: Set up Google Cloud SDK
+        uses: 'google-github-actions/setup-gcloud@v2'
+        with:
+          project_id: "${{ env.PROJECT_ID }}"
+
+      - name: Build and Push container image
+        run: |
+          IMAGE_TAG="gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          gcloud builds submit . \
+            --tag $IMAGE_TAG \
+            --project=${{ env.PROJECT_ID }}
+
+      - name: Deploy to Cloud Run
+        run: |
+          IMAGE_TAG="gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          
+          # Definición de variables de entorno (Configuración de LangSmith validada)
+          ENV_VARS="^~^LANGSMITH_TRACING=true"
+          ENV_VARS="$ENV_VARS~LANGSMITH_ENDPOINT=https://api.smith.langchain.com"
+          ENV_VARS="$ENV_VARS~LANGSMITH_API_KEY=${{ secrets.LANGSMITH_API_KEY }}"
+          ENV_VARS="$ENV_VARS~LANGSMITH_PROJECT=${{ secrets.LANGSMITH_PROJECT }}"
+          ENV_VARS="$ENV_VARS~OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}"
+          ENV_VARS="$ENV_VARS~DATABASE_URL=${{ secrets.DATABASE_URL }}"
+          ENV_VARS="$ENV_VARS~SHOPIFY_STORE_NAME=${{ secrets.SHOPIFY_STORE_NAME }}"
+          ENV_VARS="$ENV_VARS~SHOPIFY_ADMIN_ACCESS_TOKEN=${{ secrets.SHOPIFY_ADMIN_ACCESS_TOKEN }}"
+          ENV_VARS="$ENV_VARS~SHOPIFY_API_VERSION=${{ secrets.SHOPIFY_API_VERSION }}"
+          ENV_VARS="$ENV_VARS~GITHUB_TOKEN=${{ secrets.GH_TOKEN }}"
+          
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image $IMAGE_TAG \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars="$ENV_VARS" \
+            --project=${{ env.PROJECT_ID }}
+
+      - name: Run Database Migrations (Cloud Run Job)
+        run: |
+          MIGRATE_JOB_NAME="migrate-${{ env.SERVICE_NAME }}"
+          IMAGE="gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          
+          # Solo pasamos DATABASE_URL para la migración
+          ENV_VARS="^~^DATABASE_URL=${{ secrets.DATABASE_URL }}"
+          
+          # Intentamos actualizar el job, si falla lo creamos
+          gcloud run jobs update $MIGRATE_JOB_NAME \
+            --image $IMAGE \
+            --command "alembic" \
+            --args "upgrade,head" \
+            --set-env-vars="$ENV_VARS" \
+            --task-timeout "5m" \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            ||
+          gcloud run jobs create $MIGRATE_JOB_NAME \
+            --image $IMAGE \
+            --command "alembic" \
+            --args "upgrade,head" \
+            --set-env-vars="$ENV_VARS" \
+            --task-timeout "5m" \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }}
+
+          echo "Executing Database migration job..."
+          gcloud run jobs execute $MIGRATE_JOB_NAME \
+            --wait \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }}

@@ -1,6 +1,9 @@
-# Nombre del Proyecto
+# poc_ecomm_support_back_office_agent_v1
 
-Breve descripción de qué hace este proyecto y su propósito.
+It's a PoC of eCommerce Support Back Office Agent to make next taks:
+
+1. Receibe alert low stok from Shopify Store.
+2. From Chat the seller can ask about the specific product stock.
 
 ## 🚀 Instalación
 1. Clona el repositorio: `git clone ...`
