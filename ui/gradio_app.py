@@ -68,10 +68,12 @@ async def predict(message, history):
 # Interfaz de Gradio
 demo = gr.ChatInterface(
     fn=predict,
-    title="eCommerce Owners Support Agent Chat (DEBUG MODE)",
+    title="e-commerce back-office support Agent (DEBUG MODE)",
     description="Ask to stock, order status and much more."
 )
 
 if __name__ == "__main__":
-    logger.info("Iniciando servidor local en http://0.0.0.0:7860")
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    import os
+    port = int(os.environ.get("PORT", 7860))
+    logger.info(f"Iniciando servidor local en http://0.0.0.0:{port}")
+    demo.launch(server_name="0.0.0.0", server_port=port)

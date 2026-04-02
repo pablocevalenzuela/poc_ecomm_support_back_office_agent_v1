@@ -170,3 +170,32 @@ $ python3 ui/gradio_app.py
   ¿Te gustaría que añadamos un paso de "Aprobación Humana" (HITL) para ciertas acciones sensibles, como por ejemplo si el agente
   quisiera cancelar un pedido?
 
+
+
+//pending features and improvements
+1- al preguntar ¿tengo algún pedido pendiente que incluye el producto con sku 3829389283?, no recibo respuesta esperada sino
+Lamentablemente, no he podido obtener información sobre los pedidos pendientes que
+incluyen el queso Nimbus. Puede que haya un problema temporal con la conexión a Shopify. 
+Te recomendaría intentar nuevamente más tarde o verificar manualmente en el sistema de pedidos. Si necesitas ayuda con otra cosa, házmelo saber.
+
+
+2- al preguntar por pedidos pendientes por pagar, tengo problemas:
+
+¿tengo pedidos pendiente por preparar y ya pagados?
+
+Lamentablemente, sigo teniendo problemas para obtener la información sobre los pedidos pendientes.
+Te recomendaría verificar directamente en tu panel de control de Shopify para ver si hay pedidos pendientes por preparar. Si necesitas ayuda con algo más, no dudes en decírmelo.
+
+
+
+
+
+
+
+//key info:
+entry-point is api/main.py
+
+URLs:
+API Principal: http://localhost:8000/
+Interfaz de Back-office (Gradio): http://localhost:8000/ui
+Documentación Interactiva (Swagger): http://localhost:8000/docs
