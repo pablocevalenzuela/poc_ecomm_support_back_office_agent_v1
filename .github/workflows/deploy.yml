@@ -31,7 +31,8 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: 'google-github-actions/auth@v2'
         with:
-          credentials_json: "${{ secrets.GCP_SA_KEY }}"
+          workload_identity_provider: "${{ secrets.GCP_WIF_PROVIDER }}"
+          service_account: "${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}"
 
       - name: Set up Google Cloud SDK
         uses: 'google-github-actions/setup-gcloud@v2'
@@ -49,17 +50,17 @@ jobs:
         run: |
           IMAGE_TAG="gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
           
-          # Definición de variables de entorno (Incluye LangChain para Observabilidad)
-          # El delimitador ^~^ es para manejar caracteres especiales en las variables
-          ENV_VARS="^~^LANGCHAIN_TRACING_V2=true"
-          ENV_VARS="$ENV_VARS~LANGCHAIN_ENDPOINT=https://api.smith.langchain.com"
-          ENV_VARS="$ENV_VARS~LANGCHAIN_API_KEY=${{ secrets.LANGCHAIN_API_KEY }}"
-          ENV_VARS="$ENV_VARS~LANGCHAIN_PROJECT=${{ secrets.LANGCHAIN_PROJECT }}"
+          # Definición de variables de entorno (Configuración de LangSmith validada)
+          ENV_VARS="^~^LANGSMITH_TRACING=true"
+          ENV_VARS="$ENV_VARS~LANGSMITH_ENDPOINT=https://api.smith.langchain.com"
+          ENV_VARS="$ENV_VARS~LANGSMITH_API_KEY=${{ secrets.LANGSMITH_API_KEY }}"
+          ENV_VARS="$ENV_VARS~LANGSMITH_PROJECT=${{ secrets.LANGSMITH_PROJECT }}"
           ENV_VARS="$ENV_VARS~OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}"
           ENV_VARS="$ENV_VARS~DATABASE_URL=${{ secrets.DATABASE_URL }}"
           ENV_VARS="$ENV_VARS~SHOPIFY_STORE_NAME=${{ secrets.SHOPIFY_STORE_NAME }}"
           ENV_VARS="$ENV_VARS~SHOPIFY_ADMIN_ACCESS_TOKEN=${{ secrets.SHOPIFY_ADMIN_ACCESS_TOKEN }}"
           ENV_VARS="$ENV_VARS~SHOPIFY_API_VERSION=${{ secrets.SHOPIFY_API_VERSION }}"
+          ENV_VARS="$ENV_VARS~GITHUB_TOKEN=${{ secrets.GH_TOKEN }}"
           
           gcloud run deploy ${{ env.SERVICE_NAME }} \
             --image $IMAGE_TAG \
