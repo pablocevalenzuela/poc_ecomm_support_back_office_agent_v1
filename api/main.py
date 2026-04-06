@@ -2,25 +2,24 @@ import gradio as gr
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from ui.gradio_app import demo, logger # Reutilizamos demo y logger
-from shopify_agent.graph import graph, checkpointer, pool # Importamos también pool
+from shopify_agent.graph import init_graph, pool # Importamos init_graph
 from langchain_core.messages import HumanMessage
 from contextlib import asynccontextmanager
 import os
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Lógica de inicio (sustituye a las migraciones manuales)
+    # Lógica de inicio asíncrona
     try:
-        logger.info("Verificando persistencia de LangGraph en Base de Datos...")
-        # Abrimos el pool de conexiones explícitamente (v2+ best practice)
-        await pool.open()
-        await checkpointer.setup()
-        logger.info("Persistencia configurada correctamente.")
+        logger.info("Inicializando Grafo y Persistencia de LangGraph...")
+        # Esta llamada ocurre cuando el event loop ya está corriendo
+        await init_graph()
+        logger.info("Sistema listo y persistencia configurada.")
     except Exception as e:
-        logger.warning(f"No se pudo configurar la persistencia persistente (usando memoria volátil): {str(e)}")
+        logger.warning(f"No se pudo configurar la persistencia persistente: {str(e)}")
     
     yield
-    # Cerramos el pool al apagar la app
+    # Lógica de apagado
     await pool.close()
 
 app = FastAPI(title="Shopify Agent API & UI", lifespan=lifespan)
@@ -46,13 +45,18 @@ async def root():
 async def chat(request: ChatRequest):
     logger.info(f"API Call - Session: {request.session_id} - Message: {request.message}")
     
+    # Obtenemos el grafo (ya inicializado en el lifespan)
+    from shopify_agent.graph import graph
+    if graph is None:
+        raise HTTPException(status_code=503, detail="El grafo de IA no está inicializado")
+
     config = {
         "configurable": {"thread_id": request.session_id},
         "metadata": {"application": "shopify-api", "environment": "cloud-run"}
     }
     
     try:
-        # Invocación al grafo de LangGraph (igual que en la UI)
+        # Invocación al grafo de LangGraph
         result = await graph.ainvoke(
             {"messages": [HumanMessage(content=request.message)]}, 
             config

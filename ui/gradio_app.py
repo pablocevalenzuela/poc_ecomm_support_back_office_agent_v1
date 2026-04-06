@@ -1,7 +1,7 @@
 import gradio as gr
 import asyncio
 import logging
-from shopify_agent.graph import graph
+from shopify_agent.graph import init_graph # Importamos la función de inicialización
 from langchain_core.messages import HumanMessage, AIMessage
 
 # 1. Configuración de Logging de Consola
@@ -15,6 +15,12 @@ logger = logging.getLogger("SHOPIFY-AGENT")
 
 async def predict(message, history):
     logger.info(f"--- NUEVA CONSULTA: '{message}' ---")
+
+    # Obtenemos el grafo (se inicializa si es necesario)
+    graph = await init_graph()
+    
+    if graph is None:
+        return "Error: El sistema de IA no se ha inicializado correctamente."
 
     # Convertimos el historial de Gradio a mensajes de LangGraph de forma robusta
     messages = []

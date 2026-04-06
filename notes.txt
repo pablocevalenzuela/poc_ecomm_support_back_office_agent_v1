@@ -529,3 +529,110 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
 gcloud projects add-iam-policy-binding "poc-shopify-ai-agent-v1" \
     --member="serviceAccount:github-actions-deployer@poc-shopify-ai-agent-v1.iam.gserviceaccount.com" \
     --role="roles/run.invoker"
+
+
+
+
+
+
+
+Memory in Agentic System:
+
+¿pero como puedo probar en local que la memoria de mi Agente de LangGraph es mejor y que tipo de memoria es, corto plazo o largo plazo?                   
+▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+✦ ¡Excelente pregunta! Como Senior Engineer, te explicaré qué tipo de memoria has implementado y cómo ponerla a prueba científicamente en tu localhost:
+
+  1. ¿Qué tipo de memoria es?
+  Lo que acabas de implementar con AsyncPostgresSaver es Memoria a Corto Plazo (Short-Term Memory) pero con persistencia. 
+
+   * Memoria a Corto Plazo (Checkpointing): LangGraph guarda el "estado completo" del grafo en un punto del tiempo (los mensajes, las variables, etc.).
+   * Persistencia: Al guardarlo en Supabase en lugar de en la RAM, esa memoria a corto plazo no se borra cuando apagas el servidor. 
+   * Memoria a Largo Plazo (Long-Term Memory): Se suele implementar con una base de datos de vectores (como pgvector) para que el agente aprenda datos del
+     usuario a través de meses o años (ej: "A este usuario le gustan las ofertas los lunes"). Por ahora, nos enfocamos en que el agente no olvide lo que
+     hablamos en esta sesión.
+
+  ---
+
+  2. Guía de Prueba Local (Paso a Paso)
+
+  Para probar que la memoria funciona y es mejor que antes, haz este experimento:
+
+  Experimento A: El "Test del Nombre" (Continuidad)
+   1. Abre la UI (make dev $\rightarrow$ http://localhost:8000/ui).
+   2. Conversación 1:
+       * Escribe: "Hola, me llamo Pablo. Recuerda mi nombre."
+       * El agente te saludará.
+   3. Conversación 2:
+       * Escribe: "¿Cómo me llamo?"
+       * Resultado esperado: "Te llamas Pablo". (Esto demuestra que el contexto fluye).
+
+  Experimento B: El "Test de Supervivencia" (Persistencia Real)
+  Aquí es donde verás la magia de Supabase:
+   1. Sigue con la sesión anterior donde el agente ya sabe tu nombre.
+   2. ¡Apaga tu servidor! (Ve a tu terminal y presiona Ctrl+C).
+   3. Espera 5 segundos.
+   4. Inicia el servidor de nuevo (make dev).
+   5. Vuelve a la UI (refresca la página si es necesario).
+   6. Escribe: "¿Te acuerdas de mi nombre?" o "¿Qué estábamos hablando?"
+   7. Resultado esperado: El agente dirá "Sí, te llamas Pablo". 
+
+  ¡Antes de este cambio, este experimento B fallaría siempre! El agente te respondería "Lo siento, no tengo acceso a nuestro historial previo" porque la RAM
+  se borró.
+
+  3. ¿Por qué es "Mejor"?
+   1. Fiabilidad: Cloud Run apaga tu servidor cada vez que no hay visitas. Antes, cada visita nueva era un agente "amnésico". Ahora, es el mismo agente con
+      toda su historia.
+   2. Multisesión: Si abres dos pestañas del navegador con dos thread_id distintos, verás que cada uno guarda su propia historia sin mezclarlas.
+   3. Análisis: Ahora puedes ir a Supabase y leer lo que el agente y el usuario hablaron en la tabla checkpoints, lo cual es vital para mejorar el prompt en
+      el futuro.
+
+  ¿Te gustaría que te ayude a ver los registros en Supabase para entender mejor cómo se guardan tus mensajes?
+▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+ > si, por favor                                                                                                                                             
+▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+✦ Para ver las "tripas" de la memoria de tu agente en Supabase, lo más interesante no es la tabla de datos binarios (que es ilegible para humanos), sino la
+  tabla de metadatos, que es donde LangGraph organiza quién dijo qué y cuándo.
+
+  Sigue estos pasos en tu SQL Editor de Supabase:
+
+  1. Ver el historial de conversaciones activo
+  Ejecuta esta consulta para ver qué hilos (thread_id) tienes guardados y cuándo fue su última interacción:
+
+    1 SELECT 
+    2     thread_id, 
+    3     checkpoint_id, 
+    4     parent_checkpoint_id,
+    5     type,
+    6     metadata->>'step' as paso_del_grafo,
+    7     metadata->>'source' as origen,
+    8     CAST(metadata->>'ts' AS TIMESTAMP) as fecha_interaccion
+    9 FROM checkpoint_metadata
+   10 ORDER BY fecha_interaccion DESC;
+
+  2. ¿Qué significan estos datos?
+   * thread_id: Es el identificador único de la conversación (tu session_id). Si hablas con el agente desde dos dispositivos distintos con el mismo ID, verán
+     lo mismo.
+   * checkpoint_id: Es como una "foto" del cerebro del agente en un momento exacto. Cada vez que el agente da un paso (ej: del nodo agent al nodo tools), se
+     crea un nuevo checkpoint.
+   * metadata: Aquí LangGraph guarda el "contexto" de la foto. Verás campos como el paso actual del grafo o si el agente estaba esperando una herramienta.
+
+  3. Ver el estado "crudo" de los mensajes
+  Si quieres ver los datos reales que el agente está recordando (aunque están serializados), puedes mirar la tabla de checkpoints:
+
+   1 SELECT 
+   2     thread_id, 
+   3     checkpoint_id, 
+   4     octet_length(checkpoint) as tamaño_memoria_bytes
+   5 FROM checkpoints
+   6 WHERE thread_id = 'tu-session-id-aqui'; -- Reemplaza con tu ID de prueba
+
+  4. Por qué esta memoria es "mejor" (Nivel Senior)
+   * Resiliencia Total: Si tu base de datos crece, puedes usar técnicas de Time-Travel. LangGraph permite "retroceder" el agente a un checkpoint_id anterior
+     si cometió un error, simplemente cargando esa versión de la memoria.
+   * Escalabilidad: Al no estar en la RAM, puedes tener millones de usuarios hablando a la vez. Cloud Run solo cargará la memoria del usuario que esté
+     escribiendo en ese microsegundo, ahorrando costos de infraestructura masivamente.
+   * Auditoría: Ahora tienes un log real de lo que el agente "pensó" antes de responder, lo cual es oro puro para depurar errores de lógica en el futuro.
+
+  Consejo Final: 
+  Cuando hagas el Push, verás que estas mismas tablas se llenan con las conversaciones de tus usuarios reales en Cloud Run. ¡Es la misma base de datos, la
+  misma arquitectura, pero ahora en la nube! 
