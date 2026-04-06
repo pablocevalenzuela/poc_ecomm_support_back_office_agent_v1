@@ -1,9 +1,11 @@
+import os
 from typing import Literal
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage
 from langgraph.graph import StateGraph, END, START
 from langgraph.prebuilt import ToolNode
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from psycopg_pool import AsyncConnectionPool
 from .state import AgentState
 from .tools import tools
 from .prompts import SYSTEM_PROMPT
@@ -13,7 +15,6 @@ from .settings import settings
 tool_node = ToolNode(tools)
 
 # 2. Configurar el LLM para Azure Inference / GitHub Models
-# Usamos settings.ai_api_key que ya gestiona GITHUB_TOKEN desde .env.develop
 llm = ChatOpenAI(
     model="gpt-4o-mini",
     api_key=settings.ai_api_key,
@@ -23,10 +24,7 @@ llm = ChatOpenAI(
 
 # 3. Nodos del Grafo
 async def call_model(state: AgentState, config):
-    # Inyectamos el System Message al inicio de la conversación
     messages = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
-    
-    # Invocación asíncrona para compatibilidad con Gradio
     response = await llm.ainvoke(messages, config)
     return {"messages": [response]}
 
@@ -36,16 +34,21 @@ def should_continue(state: AgentState) -> Literal["tools", END]:
         return "tools"
     return END
 
-# 4. Configurar el flujo siguiendo tu patrón probado
+# 4. Configurar el flujo
 workflow = StateGraph(AgentState)
-
 workflow.add_node("agent", call_model)
 workflow.add_node("tools", tool_node)
-
 workflow.add_edge(START, "agent")
 workflow.add_conditional_edges("agent", should_continue)
 workflow.add_edge("tools", "agent")
 
-# 5. Persistencia para historial de conversación
-checkpointer = MemorySaver()
+# 5. Persistencia para historial de conversación en Base de Datos
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost/shopify_agent_db")
+
+# Reemplazamos asyncpg por psycopg pool para mejor manejo de conexiones en Cloud Run
+pool = AsyncConnectionPool(conninfo=DATABASE_URL, max_size=20, kwargs={"autocommit": True}, open=False)
+checkpointer = AsyncPostgresSaver(pool)
+
+# Exportamos el grafo compilado (sin checkpointer por defecto, lo inyectamos después si es necesario)
+# o compilamos directamente si el pool es accesible globalmente.
 graph = workflow.compile(checkpointer=checkpointer)
