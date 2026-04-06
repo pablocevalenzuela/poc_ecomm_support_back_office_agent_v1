@@ -221,9 +221,10 @@ GCP_WIF_SERVICE_ACCOUNT:github-deploy-sa@poc-shopify-ai-agent-v1.iam.gserviceacc
   │ SHOPIFY_API_VERSION        │ La versión de la API de Shopify (ej: 2024-01).                │
   └────────────────────────────┴───────────────────────────────────────────────────────────────┘
 
-
-
-
+OPENAI_API_KEY: 
+DATABASE_URL: postgresql://postgres:[YOUR-PASSWORD]@db.ojeobiwrhgkfixsfgasp.supabase.co:5432/postgres
+LANGCHAIN_API_KEY: 
+LANGCHAIN_PROJECT:
 
 
 
@@ -270,3 +271,261 @@ gcloud iam service-accounts add-iam-policy-binding "tu-service-account@${GCP_PRO
     --role="roles/iam.workloadIdentityUser" \
     --member="principalSet://iam.googleapis.com/projects/$(gcloud projects list --filter="${GCP_PROJECT_ID}"
     --format="value(projectNumber)")/locations/global/workloadIdentityPools/github-pool/attribute.repository/tu-usuario/tu-repositorio"
+
+
+
+gcloud iam workload-identity-pools providers describe "github-provider" \
+    --workload-identity-pool="github-pool" \
+    --location="global" \
+    --format="value(state)"
+
+gcloud iam workload-identity-pools providers undelete "github-provider" \
+    --project="${GCP_PROJECT_ID}" \
+    --location="global" \
+    --workload-identity-pool="github-pool"
+
+name: projects/1066396832454/locations/global/workloadIdentityPools/github-pool/providers/github-provider/operations/bigarpgpxphamehqr7dpcaq000000000
+
+
+gcloud iam workload-identity-pools providers describe "github-provider" \
+    --project="${GCP_PROJECT_ID}" \
+    --location="global" \
+    --workload-identity-pool="github-pool" \
+    --format="value(state)"
+
+gcloud iam workload-identity-pools providers describe "github-provider" \
+    --project="${GCP_PROJECT_ID}" \
+    --location="global" \
+    --workload-identity-pool="github-pool" \
+    --format="value(name)"
+
+projects/1066396832454/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+
+
+gcloud iam workload-identity-pools providers update-oidc "github-provider" \
+    --project="${GCP_PROJECT_ID}" \
+    --location="global" \
+    --workload-identity-pool="github-pool" \
+    --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository" \
+    --issuer-uri="https://token.actions.githubusercontent.com" \
+    --clear-attribute-condition
+
+
+1) defines variables in cloud shell:
+- Primero, define estas variables para que los comandos de abajo funcionen directamente:
+
+export PROJECT_ID="poc-shopify-ai-agent-v1"
+export REPO_NAME="pablocevalenzuela/poc_ecomm_support_back_office_agent_v1"
+
+2) verificate APIs activing:
+- Asegúrate de tener estas APIs activas:
+gcloud services enable iamcredentials.googleapis.com \
+    sts.googleapis.com \
+    run.googleapis.com \
+    cloudbuild.googleapis.com \
+    artifactregistry.googleapis.com \
+    --project "${PROJECT_ID}"
+
+3) Configuración de Workload Identity Federation (WIF)
+- El error suele estar en la attribute-condition. Vamos a crear/actualizar el Pool y el Provider con una condición robusta.
+
+gcloud iam workload-identity-pools create "github-pool" \
+    --project="${PROJECT_ID}" \
+    --location="global" \
+    --display-name="GitHub Actions Pool"
+
+- Crear el Provider (Aquí es donde suele estar el error):
+  Usaremos una condición que valide que las peticiones solo vengan de tu repositorio.
+  repo github: pablocevalenzuela/poc_ecomm_support_back_office_agent_v1
+
+gcloud iam workload-identity-pools providers create-oidc "github-provider" \
+    --project="${PROJECT_ID}" \
+    --location="global" \
+    --workload-identity-pool="github-pool" \
+    --display-name="GitHub Provider" \
+    --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository" \
+    --attribute-condition="assertion.repository == '${REPO_NAME}'" \
+    --issuer-uri="https://token.actions.githubusercontent.com"
+
+O actualizar set up actual:
+
+
+gcloud iam workload-identity-pools providers update-oidc "github-provider" \
+    --project="${PROJECT_ID}" \
+    --location="global" \
+    --workload-identity-pool="github-pool" \
+    --display-name="GitHub Provider" \
+    --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository" \
+    --attribute-condition="assertion.repository == '${REPO_NAME}'" \
+    --issuer-uri="https://token.actions.githubusercontent.com"
+
+  Nota: Asegúrate de que ${REPO_NAME} sea exactamente lo que aparece en tu URL de GitHub (ej. mi-usuario/mi-repo).    
+
+
+4) Permisos de la Service Account
+- Tu Service Account necesita permisos para construir la imagen y desplegar en Cloud Run.
+
+- Asignar roles:
+
+SA_NAME="github-actions-deployer" # El nombre que prefieras
+SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+
+
+- CREAR la Service Account (este es el paso que faltaba):
+
+gcloud iam service-accounts create "${SA_NAME}" \
+    --project="${PROJECT_ID}" \
+    --display-name="GitHub Actions Deployer"
+
+
+# 1. Permiso para Cloud Build
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/cloudbuild.builds.editor"
+    
+# 2. Permiso para Cloud Run (Admin para poder crear/actualizar)
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/run.admin"
+
+# 3. Permiso de Storage para subir la imagen (GCR usa storage buckets)
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/storage.admin"
+
+# 4. Permiso de IAM User para actuar como la SA
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/iam.serviceAccountUser"
+
+
+
+5)Vincular GitHub con la Service Account
+- Este paso le dice a Google: "Permite que cualquier identidad del Pool de GitHub que coincida con mis atributos use esta Service Account".
+
+gcloud iam service-accounts add-iam-policy-binding "${SA_EMAIL}" --project="${PROJECT_ID}" --role="roles/iam.workloadIdentityUser" --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github-pool/attribute.repository/${REPO_NAME}"
+
+
+6) Configurar los Secrets en GitHub
+- En tu repositorio de GitHub, asegúrate de que estos secrets tengan los valores correctos:
+GCP_WIF_PROVIDER: El valor debe tener este formato: projects/NÚMERO_DE_PROYECTO/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+GCP_WIF_SERVICE_ACCOUNT: github-actions-deployer@TU_PROJECT_ID.iam.gserviceaccount.com
+GCP_PROJECT_ID: TU_PROJECT_ID
+
+
+# Para el Provider
+gcloud iam workload-identity-pools providers describe "github-provider" \
+  --project="poc-shopify-ai-agent-v1" \
+  --location="global" \
+  --workload-identity-pool="github-pool" \
+  --format="value(name)"
+
+✦ Aquí tienes los valores exactos que debes poner en tus Secrets de GitHub, basados en los comandos que acabamos de ejecutar con éxito:
+
+   1. GCP_PROJECT_ID:
+      poc-shopify-ai-agent-v1
+
+   2. GCP_WIF_SERVICE_ACCOUNT:
+      github-actions-deployer@poc-shopify-ai-agent-v1.iam.gserviceaccount.com
+
+   3. GCP_WIF_PROVIDER:
+      projects/1066396832454/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+
+
+
+- Resolviendo error por falta de permisos en paso paso build and push container image de GitHub Actions:
+gcloud projects add-iam-policy-binding "poc-shopify-ai-agent-v1" \
+    --member="serviceAccount:1066396832454-compute@developer.gserviceaccount.com" \
+    --role="roles/storage.admin"
+
+gcloud projects add-iam-policy-binding "poc-shopify-ai-agent-v1" \
+    --member="serviceAccount:1066396832454@cloudbuild.gserviceaccount.com" \
+    --role="roles/cloudbuild.builds.builder"
+
+Este error es un poco engañoso: no significa necesariamente que el despliegue falló, sino que la Service Account de GitHub (github-actions-deployer) no
+  tiene permisos suficientes para "ver" y "transmitir" los logs de lo que está pasando en Cloud Build hacia la consola de GitHub. Al no poder mostrarte los
+  logs, gcloud se rinde y cierra el proceso con un error.
+
+  Para que puedas ver el progreso del Build en tiempo real en GitHub, necesitamos darle permisos de Visualizador de Logs y Visualizador de Cloud Build a tu
+  cuenta de servicio.
+
+  Ejecuta estos comandos en tu Cloud Shell:
+
+  1. Dar permisos de lectura de Logs y Build
+  Copia y pega esto (ya tiene tus datos):
+
+
+export PROJECT_ID="poc-shopify-ai-agent-v1"
+export SA_EMAIL="github-actions-deployer@${PROJECT_ID}.iam.gserviceaccount.com"
+ 
+# Permiso para ver los logs (necesario para el streaming en GitHub)
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/logging.viewer"
+
+# Permiso para ver el estado de los builds
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/cloudbuild.builds.viewer"
+
+2. (Opcional pero Recomendado) Permiso de Service Usage Consumer
+  A veces, para consultar APIs de monitoreo, se requiere este rol:
+
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/serviceusage.serviceUsageConsumer"
+
+
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/viewer"
+
+# Permiso para que Cloud Build pueda subir (push) la imagen
+gcloud projects add-iam-policy-binding "poc-shopify-ai-agent-v1" \
+    --member="serviceAccount:1066396832454@cloudbuild.gserviceaccount.com" \
+    --role="roles/artifactregistry.writer"
+
+
+
+(Opcional) Asegurar permisos para la cuenta de Compute
+  Por si acaso, daremos el mismo permiso a la cuenta de Compute Engine que mencionamos antes, ya que a veces interviene en el proceso:
+
+gcloud projects add-iam-policy-binding "poc-shopify-ai-agent-v1" \
+    --member="serviceAccount:1066396832454-compute@developer.gserviceaccount.com" \
+    --role="roles/artifactregistry.writer"
+
+
+Dar permiso de Escritura de Logs (Log Writer)
+  Este es el permiso que el error te pidió explícitamente:
+
+gcloud projects add-iam-policy-binding "poc-shopify-ai-agent-v1" \
+    --member="serviceAccount:1066396832454-compute@developer.gserviceaccount.com" \
+    --role="roles/logging.logWriter"
+
+Dar permiso de Administrador de Artifact Registry (Refuerzo)
+  Para evitar que el error de uploadArtifacts persista si el repositorio gcr.io aún no ha sido creado internamente, vamos a darle un poco más de poder a la
+  cuenta de Cloud Build:
+
+gcloud projects add-iam-policy-binding "poc-shopify-ai-agent-v1" \
+    --member="serviceAccount:1066396832454@cloudbuild.gserviceaccount.com" \
+    --role="roles/artifactregistry.repoAdmin"
+
+  1. Dar permiso de Creador al Empujar (Create on Push)
+  Este rol permite que, al hacer el docker push, si el repositorio no existe, se cree en ese mismo instante.
+
+export PROJECT_ID="poc-shopify-ai-agent-v1"
+
+# Dar permiso a la cuenta de Cloud Build
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:1066396832454@cloudbuild.gserviceaccount.com" \
+    --role="roles/artifactregistry.createOnPushWriter"
+
+# Dar permiso a la cuenta de Compute Engine (por si acaso)
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:1066396832454-compute@developer.gserviceaccount.com" \
+    --role="roles/artifactregistry.createOnPushWriter"
+
+
+gcloud projects add-iam-policy-binding "poc-shopify-ai-agent-v1" \
+    --member="serviceAccount:github-actions-deployer@poc-shopify-ai-agent-v1.iam.gserviceaccount.com" \
+    --role="roles/run.invoker"
