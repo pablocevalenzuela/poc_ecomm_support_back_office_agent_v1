@@ -45,6 +45,10 @@ workflow.add_edge("tools", "agent")
 # 5. Persistencia para historial de conversación en Base de Datos
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost/shopify_agent_db")
 
+# Psycopg 3 no soporta el prefijo +asyncpg de SQLAlchemy, lo limpiamos si existe
+if "postgresql+asyncpg://" in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
+
 # Reemplazamos asyncpg por psycopg pool para mejor manejo de conexiones en Cloud Run
 pool = AsyncConnectionPool(conninfo=DATABASE_URL, max_size=20, kwargs={"autocommit": True}, open=False)
 checkpointer = AsyncPostgresSaver(pool)
