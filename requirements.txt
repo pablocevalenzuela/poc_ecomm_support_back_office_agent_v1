@@ -11,3 +11,6 @@ alembic
 psycopg2-binary
 httpx
 langsmith
+langgraph-checkpoint-postgres
+psycopg[binary]
+psycopg-pool

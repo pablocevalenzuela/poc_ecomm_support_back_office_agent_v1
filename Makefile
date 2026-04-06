@@ -19,7 +19,7 @@ install:
 dev:
 	@echo "Lanzando Servidor en Modo Desarrollo: http://localhost:$(PORT)"
 	@echo "La UI estará disponible en: http://localhost:$(PORT)/ui"
-	$(PYTHON) -m uvicorn $(APP_MODULE) --host 0.0.0.0 --port $(PORT) --reload
+	PYTHONPATH=. $(PYTHON) -m uvicorn $(APP_MODULE) --host 0.0.0.0 --port $(PORT) --reload
 
 run:
 	@echo "Lanzando Servidor en Modo Producción Local: http://localhost:$(PORT)"

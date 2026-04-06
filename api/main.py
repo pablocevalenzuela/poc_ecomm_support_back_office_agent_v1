@@ -2,11 +2,28 @@ import gradio as gr
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from ui.gradio_app import demo, logger # Reutilizamos demo y logger
-from shopify_agent.graph import graph
+from shopify_agent.graph import graph, checkpointer, pool # Importamos también pool
 from langchain_core.messages import HumanMessage
+from contextlib import asynccontextmanager
 import os
 
-app = FastAPI(title="Shopify Agent API & UI")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Lógica de inicio (sustituye a las migraciones manuales)
+    try:
+        logger.info("Verificando persistencia de LangGraph en Base de Datos...")
+        # Abrimos el pool de conexiones explícitamente (v2+ best practice)
+        await pool.open()
+        await checkpointer.setup()
+        logger.info("Persistencia configurada correctamente.")
+    except Exception as e:
+        logger.warning(f"No se pudo configurar la persistencia persistente (usando memoria volátil): {str(e)}")
+    
+    yield
+    # Cerramos el pool al apagar la app
+    await pool.close()
+
+app = FastAPI(title="Shopify Agent API & UI", lifespan=lifespan)
 
 # Modelo para el endpoint de chat
 class ChatRequest(BaseModel):
@@ -47,7 +64,6 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 # Montamos la UI de Gradio en /ui
-# Esto permite que un solo proceso maneje todo
 app = gr.mount_gradio_app(app, demo, path="/ui")
 
 if __name__ == "__main__":
