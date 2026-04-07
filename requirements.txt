@@ -14,3 +14,6 @@ langsmith
 langgraph-checkpoint-postgres
 psycopg[binary]
 psycopg-pool
+pypdf
+langchain-community
+langchain-text-splitters

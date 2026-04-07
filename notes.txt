@@ -636,3 +636,122 @@ Memory in Agentic System:
   Consejo Final: 
   Cuando hagas el Push, verás que estas mismas tablas se llenan con las conversaciones de tus usuarios reales en Cloud Run. ¡Es la misma base de datos, la
   misma arquitectura, pero ahora en la nube! 
+
+
+
+
+  ✦ ¡A ti! Es un gusto ver cómo este proyecto va tomando forma profesional. Como Senior Engineer, quiero dejarte con un último "regalo técnico" para que tu MVP
+  sea verdaderamente robusto y maneje sesiones de usuario independientes.
+
+  Actualmente, tu ui/gradio_app.py tiene el thread_id fijo (local-session-001). Esto significa que si dos personas usan tu app en Cloud Run al mismo tiempo,
+  sus mensajes se mezclarán en la misma memoria.
+
+  Aquí tienes el cambio quirúrgico para que cada usuario tenga su propia conversación independiente (usando el session_hash que Gradio genera
+  automáticamente).
+
+  1. Actualizar ui/gradio_app.py para Sesiones Únicas
+  Simplemente añadiremos el parámetro request a tu función predict para obtener el ID de sesión de Gradio.
+
+
+  RAG(retrieval augmented generation):
+
+  > por ahora, dejarlo así. ahora me gustaría que mi Agente de LangGraph pueda responder a ciertas preguntas utilizando un fichero PDF, porque por ejemplo la 
+   página Shopify no tiene información detallada para los quesos, pero si un fichero propio PDF con esta información. ¿como lo hacen los ingenieros expertos 
+   en Agentic Systems y expertos en LangGraph?                                                                                                               
+▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+✦ Como ingeniero senior experto en sistemas agénticos, te confirmo que lo que buscas es un patrón llamado RAG (Retrieval-Augmented Generation) integrado como
+  una Herramienta (Tool) dentro de tu grafo de LangGraph.
+
+  Los ingenieros expertos no simplemente "leen el PDF" en cada consulta (sería lento y costoso en tokens); lo que hacemos es crear una Base de Datos
+  Vectorial. Aquí te explico la arquitectura de nivel Staff Engineer que deberías implementar:
+
+  1. El Patrón "RAG as a Tool"
+  En lugar de pasarle todo el PDF al modelo en el prompt, creamos una herramienta (ej: search_cheese_catalog) que el agente decide usar solo cuando el
+  usuario pregunta por detalles técnicos de quesos que no están en Shopify.
+
+  2. Arquitectura Técnica (El Stack Experto)
+  Dado que ya usas Supabase, la decisión de arquitectura más inteligente es usar pgvector (una extensión de Postgres que ya tienes disponible en Supabase).
+
+  El flujo es el siguiente:
+   1. Ingesta (Una sola vez): Se lee el PDF, se divide en trozos pequeños (chunks) y se convierten en vectores (embeddings) usando un modelo de OpenAI
+      (text-embedding-3-small).
+   2. Almacenamiento: Estos vectores se guardan en una tabla nueva en tu base de datos de Supabase.
+   3. Recuperación (Retrieval): Cuando el agente usa la herramienta, esta convierte la pregunta del usuario en un vector, busca los trozos más parecidos en
+      Supabase y le devuelve al agente solo la información relevante.
+
+  ---
+
+  3. Implementación en LangGraph (Paso a Paso)
+
+  Paso A: Nuevas Dependencias
+  Necesitaremos herramientas para procesar el PDF y manejar los vectores:
+   * pypdf: Para leer el fichero.
+   * langchain-community: Para los cargadores de documentos.
+   * langchain-openai: Para generar los embeddings.
+
+  Paso B: Crear la Herramienta de Búsqueda
+  En tu archivo shopify_agent/tools.py, añadiríamos una herramienta como esta:
+
+    1 @tool
+    2 async def search_technical_catalog(query: str):
+    3     """
+    4     Busca información técnica detallada sobre productos (como quesos, 
+    5     maduración, ingredientes) en el catálogo PDF oficial que no está en Shopify.
+    6     """
+    7     # 1. Conectar a la base de datos vectorial (Supabase/pgvector)
+    8     # 2. Buscar los fragmentos de PDF más relevantes para la 'query'
+    9     # 3. Retornar el texto encontrado para que el agente responda
+   10     return "El queso Roquefort tiene una maduración de 3 meses en cuevas..."
+
+  Paso C: El Agente decide
+  Al añadir esta herramienta a tu lista de tools en graph.py, el agente se vuelve inteligente:
+   * Si el usuario pregunta: "¿Cuánto stock hay?" $\rightarrow$ Llama a la herramienta de Shopify.
+   * Si el usuario pregunta: "¿Qué tipo de leche tiene el Roquefort?" $\rightarrow$ Llama a la herramienta de Catálogo PDF.
+
+  ¿Cómo lo hacemos ahora?
+  Para avanzar, te propongo lo siguiente:
+   1. Habilitar pgvector en Supabase: Es solo un clic en la consola de Supabase (Database -> Extensions).
+   2. Subir el PDF: Necesito que tengas el PDF a mano.
+   3. Crear el Script de Ingesta: Yo puedo escribirte el código para "leer tu PDF y guardarlo en Supabase" de forma profesional.
+
+  ¿Te gustaría que preparemos primero la tabla en Supabase y el script para procesar tu PDF? Es el primer paso para darle esa "memoria experta" a tu agente.
+
+
+
+
+
+  Como Senior Engineer, mi recomendación es que siempre verifiques el esquema antes de correr un script de carga. 
+
+  Acción Correctiva (Paso Obligatorio)
+
+  Por favor, ve a tu SQL Editor en Supabase (en el panel de control web) y ejecuta este bloque completo:
+
+  1. Habilitar la extensión de vectores (si no está)
+  CREATE EXTENSION IF NOT EXISTS vector;
+    
+  2. Crear la tabla para el catálogo PDF
+CREATE TABLE IF NOT EXISTS product_catalog_embeddings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  content text, -- Fragmento del PDF
+  metadata jsonb, -- Fuente, página, etc.
+  embedding vector(1536) -- El vector de OpenAI/GitHub
+);
+
+3. Crear un índice para búsquedas rápidas (Opcional pero recomendado)
+CREATE INDEX ON product_catalog_embeddings USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 100);
+
+
+//para la ingesta del PDF en RAG flow:
+$ python3 ingest_catalog.py products_catalog/products.pdf
+
+
+
+Lo que resuelve el Agent:
+- Responde al stock actual de un producto por su nombre o sku.
+- Responde a información detalla de un producto por su nombre.
+- Responde con el estado de un pedido segun su id.
+
+
+casos borde(edge case) pendientes de resolver:
+1- el Agent no retorna el dato precio de un producto, si el sku y stock correctamente.
