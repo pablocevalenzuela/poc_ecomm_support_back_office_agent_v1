@@ -1,9 +1,15 @@
-Lo que resuelve el Agent:
+Que resuelve el Agent:
 - Responde al stock actual de un producto por su nombre o sku.
-- Responde a información detalla de un producto por su nombre.
+- Responde a información detalla de un producto y que no está en la página del producto.
 - Responde con el estado de un pedido segun su id.
-- Agente responde con la solicitud de cancelar un pedido.
+- Agente puede cancelar un pedido y su confirmación.
+- Agente hace un nuevo pedido de stock al proveedor y envía mails al dueño de tienda y proveedor.
 
+
+Funcionalidades Agénticas:
+- HITL en procesos críticos.
+- Patrón Agéntico ReAct que permite autonomía agéntica.
+- RAG para la obtención de información no estructurada.
 
 casos borde(edge case) pendientes de resolver:
 1- el Agent no retorna el dato precio de un producto, si el sku y stock correctamente.
@@ -13,7 +19,8 @@ Bugs pendientes por resolver:
 1- Flujo RAG no responde con data de embedding.
 
 Features pendientes:
-- evaluar si se implementó o no Funciones reductoras para el crecimiento del estado.
+- evaluar si se implementó o no funciones reductoras para el crecimiento del estado.
+- al existir low stock en shopify store, se notifique en Chat, además se envíe mail al proveedor solicitando nuevo stock.
 
 
 

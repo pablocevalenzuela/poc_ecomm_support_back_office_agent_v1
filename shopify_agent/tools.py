@@ -97,7 +97,8 @@ async def cancel_shopify_order(order_id: str, reason: str = "CUSTOMER") -> str:
     Ejecuta la cancelación de un pedido en Shopify realmente vía GraphQL.
     """
     clean_name = str(order_id).replace("#", "").strip()
-    logger.info(f"--- ACCIÓN REAL: Iniciando cancelación para Pedido {clean_name} ---")
+    logger.info(
+        f"--- ACCIÓN REAL: Iniciando cancelación para Pedido {clean_name} ---")
 
     # 1. Buscar GID y Email del cliente
     search_query = """
@@ -112,14 +113,15 @@ async def cancel_shopify_order(order_id: str, reason: str = "CUSTOMER") -> str:
             resp = await client.post(settings.shopify_url, json={"query": search_query, "variables": {"query": f"name:#{clean_name}"}}, headers=HEADERS)
             data = resp.json()
             edges = data.get("data", {}).get("orders", {}).get("edges", [])
-            
+
             if not edges:
                 return f"Error: No encontré el pedido {order_id} para cancelar."
-            
+
             gid = edges[0]["node"]["id"]
             order_name = edges[0]["node"]["name"]
-            customer_email = edges[0]["node"].get("email", settings.admin_email)
-            
+            customer_email = edges[0]["node"].get(
+                "email", settings.admin_email)
+
             logger.info(f"ID encontrado: {gid} para el pedido {order_name}")
 
         except Exception as e:
@@ -134,14 +136,14 @@ async def cancel_shopify_order(order_id: str, reason: str = "CUSTOMER") -> str:
       }
     }
     """
-    
+
     variables = {
         "orderId": gid,
         "reason": "CUSTOMER",
         "refund": False,
         "restock": True
     }
-    
+
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(settings.shopify_url, json={"query": mutation, "variables": variables}, headers=HEADERS)
@@ -150,7 +152,7 @@ async def cancel_shopify_order(order_id: str, reason: str = "CUSTOMER") -> str:
 
             cancel_result = res_data.get("data", {}).get("orderCancel", {})
             user_errors = cancel_result.get("userErrors", [])
-            
+
             if user_errors:
                 return f"Shopify rechazó la cancelación: {user_errors[0]['message']}"
 
@@ -164,10 +166,10 @@ async def send_approval_email(order_name: str, reason: str) -> str:
     """Envía correo al administrador para aprobación."""
     if not settings.smtp_user or not settings.admin_email:
         return "Error: Configuración de email incompleta en .env."
-    
+
     subject = f"APROBACIÓN REQUERIDA: Cancelar {order_name}"
     body = f"El asistente de IA solicita cancelar el pedido {order_name}.\nMotivo: {reason}\n\nPor favor, responde 'apruebo' o 'no apruebo' en el chat para proceder."
-    
+
     try:
         msg = MIMEText(body, "plain", "utf-8")
         msg["Subject"] = subject
@@ -183,11 +185,35 @@ async def send_approval_email(order_name: str, reason: str) -> str:
 
 
 @tool
+async def send_email_to_supplier(cant: int, sku: str) -> str:
+    """Envía correo al proveedor solicitando más stock."""
+    if not settings.smtp_user or not settings.admin_email:
+        return "Error: Configuración de email incompleta en .env."
+
+    subject = f"NUEVA SOLICITUD DE STOCK"
+    body = f"Estimado Juan Pérez de Lechería Río Claro, desde La Tablita,\n\nsolicitamos reservar nuevo stock de {cant}, para el SKU: {sku}\n\nPor favor, espere nuestra OC que será enviada en un plazo de 24 hrs.\n\nGracias, Joaquín Urra, La Tablita"
+
+    try:
+        msg = MIMEText(body, "plain", "utf-8")
+        msg["Subject"] = subject
+        msg["From"] = settings.smtp_user
+        msg["To"] = settings.email_to_supplier
+        msg["Cc"] = settings.admin_email
+        with smtplib.SMTP(settings.smtp_server, settings.smtp_port) as server:
+            server.starttls()
+            server.login(settings.smtp_user, settings.smtp_password)
+            server.send_message(msg)
+        return f"Email de solicitud enviado al administrador ({settings.admin_email})."
+    except Exception as e:
+        return f"Error al enviar email: {str(e)}"
+
+
+@tool
 async def send_customer_cancellation_email(order_name: str, customer_email: str) -> str:
     """Envía notificación formal al cliente con copia al administrador."""
     subject = f"Actualización de tu pedido {order_name} - Cancelado"
-    body = f"Hola,\n\nTe informamos que tu pedido {order_name} ha sido cancelado exitosamente.\n\nSaludos,\nEquipo de Soporte."
-    
+    body = f"Hola,\n\nTe informamos que tu pedido {order_name} ha sido cancelado exitosamente.\n\nSaludos,\nEquipo de La Tablita."
+
     try:
         msg = MIMEText(body, "plain", "utf-8")
         msg["Subject"] = subject
@@ -209,29 +235,32 @@ async def search_product_catalog(query: str) -> str:
     Busca información técnica detallada sobre productos en el catálogo PDF.
     """
     logger.info(f"--- RAG: Iniciando búsqueda en catálogo para: '{query}' ---")
-    embeddings_model = HuggingFaceEndpointEmbeddings(model="sentence-transformers/all-MiniLM-L6-v2", huggingfacehub_api_token=settings.huggingface_api_token)
+    embeddings_model = HuggingFaceEndpointEmbeddings(
+        model="sentence-transformers/all-MiniLM-L6-v2", huggingfacehub_api_token=settings.huggingface_api_token)
     try:
         # Generar vector
         query_embedding = await embeddings_model.aembed_query(query)
-        
-        db_url = settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
+
+        db_url = settings.database_url.replace(
+            "postgresql+asyncpg://", "postgresql://")
         async with await psycopg.AsyncConnection.connect(db_url) as conn:
             async with conn.cursor() as cur:
                 # DEPURACIÓN: ¿Hay algo en la base de datos?
                 await cur.execute("SELECT count(*) FROM product_catalog_embeddings;")
                 count = await cur.fetchone()
-                logger.info(f"RAG DIAGNÓSTICO: La base de datos tiene {count[0]} filas.")
+                logger.info(
+                    f"RAG DIAGNÓSTICO: La base de datos tiene {count[0]} filas.")
 
                 # Búsqueda real
                 # IMPORTANTE: Convertimos el vector a lista de strings para asegurar el casting correcto en PostgreSQL
                 embedding_str = "[" + ",".join(map(str, query_embedding)) + "]"
-                
+
                 await cur.execute(
-                    "SELECT content FROM product_catalog_embeddings ORDER BY embedding <=> %s LIMIT 10;", 
+                    "SELECT content FROM product_catalog_embeddings ORDER BY embedding <=> %s LIMIT 10;",
                     (embedding_str,)
                 )
                 rows = await cur.fetchall()
-                
+
                 if not rows:
                     # SI NO HAY RESULTADOS CON VECTOR, DEVOLVEMOS LO QUE HAYA (Fallback para catálogo pequeño)
                     await cur.execute("SELECT content FROM product_catalog_embeddings LIMIT 2;")
@@ -239,9 +268,9 @@ async def search_product_catalog(query: str) -> str:
                     if fallback_rows:
                         logger.info("RAG: Usando fallback de contenido total.")
                         return "INFORMACIÓN GENERAL DEL CATÁLOGO:\n\n" + "\n---\n".join([r[0] for r in fallback_rows])
-                    
+
                     return "No encontré información técnica en el catálogo."
-                
+
                 logger.info(f"RAG: Éxito. {len(rows)} fragmentos recuperados.")
                 return "INFORMACIÓN DEL CATÁLOGO PDF:\n\n" + "\n---\n".join([row[0] for row in rows])
     except Exception as e:
@@ -261,18 +290,23 @@ async def get_stock_by_sku(product_name_or_sku: str) -> str:
         except Exception as e:
             return str(e)
 
+
 @tool
 async def get_shopify_product_details(inventory_item_id: str):
     """Obtiene detalles técnicos de un ítem de inventario."""
-    gid = f"gid://shopify/InventoryItem/{inventory_item_id}" if not str(inventory_item_id).startswith("gid://") else inventory_item_id
+    gid = f"gid://shopify/InventoryItem/{inventory_item_id}" if not str(
+        inventory_item_id).startswith("gid://") else inventory_item_id
     query = "query($id: ID!) { inventoryItem(id: $id) { sku variant { title product { title vendor } } } }"
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(settings.shopify_url, json={'query': query, 'variables': {'id': gid}}, headers=HEADERS)
             data = response.json()
             item = data["data"].get("inventoryItem")
-            if not item: return "Producto no encontrado."
+            if not item:
+                return "Producto no encontrado."
             return {"title": item["variant"]["product"]["title"], "sku": item["sku"]}
-        except Exception as e: return str(e)
+        except Exception as e:
+            return str(e)
 
-tools = [get_order_status, cancel_shopify_order, send_approval_email, send_customer_cancellation_email, search_product_catalog, get_stock_by_sku, get_shopify_product_details]
+tools = [get_order_status, cancel_shopify_order, send_approval_email, send_customer_cancellation_email,
+         search_product_catalog, get_stock_by_sku, get_shopify_product_details, send_email_to_supplier]
