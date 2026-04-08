@@ -77,8 +77,9 @@ demo = gr.ChatInterface(
     fn=predict,
     # title="e-commerce back-office support Agent (DEBUG MODE)",
     # title="Tu Asistente Virtual en - La Tablita - (DEBUG MODE)",
-    title="Asistente Virtual Atención Al Cliente - La Tablita - (DEBUG MODE)",
-    description="Pregúntame sobre tus quesos preferidos, haz un nuevo pedido, consulta el estado de tu pedido o cancela tu pedido aquí."
+    # title="Asistente Virtual Atención Al Cliente - La Tablita - (DEBUG MODE)",
+    title="Agente de IA para el Back Office de La Tablita (Versión Beta 1.0)",
+    description="Pregúntame sobre el stock, cancelación y el estado de un pedido, información privada y detallada de un producto(SKU/ISBN) y mucho más."
 )
 
 if __name__ == "__main__":

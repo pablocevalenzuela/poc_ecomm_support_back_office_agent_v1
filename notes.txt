@@ -1,3 +1,22 @@
+Lo que resuelve el Agent:
+- Responde al stock actual de un producto por su nombre o sku.
+- Responde a información detalla de un producto por su nombre.
+- Responde con el estado de un pedido segun su id.
+- Agente responde con la solicitud de cancelar un pedido.
+
+
+casos borde(edge case) pendientes de resolver:
+1- el Agent no retorna el dato precio de un producto, si el sku y stock correctamente.
+
+
+Bugs pendientes por resolver:
+1- Flujo RAG no responde con data de embedding.
+
+
+
+
+
+
 //create virtual env python to project:
 $ python3 -m venv .venv
 $ source .venv/bin/activate
@@ -755,3 +774,199 @@ Lo que resuelve el Agent:
 
 casos borde(edge case) pendientes de resolver:
 1- el Agent no retorna el dato precio de un producto, si el sku y stock correctamente.
+
+
+
+
+//cambio de proveedor de Inference:
+
+Entiendo perfectamente el problema. El error 413 Payload Too Large indica que has superado el límite de 8,000 tokens que impone la cuota gratuita de
+  GitHub Models para gpt-4o-mini. 
+
+  Para solucionar esto migrando a Hugging Face sin perder calidad, realizaremos los siguientes pasos:
+   1. Identificar las configuraciones actuales en settings.py, graph.py (para el LLM) y tools.py (para los Embeddings del RAG).
+   2. Actualizar las dependencias si es necesario (usaremos langchain-huggingface).
+   3. Cambiar la instanciación de los modelos para apuntar a la Inferencia de Hugging Face.
+
+  Empezaré investigando cómo están configurados actualmente el LLM y los Embeddings.
+╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ ✓  ReadFile shopify_agent/settings.py                                                                                                           │
+│                                                                                                                                                 │
+│                                                                                                                                                 │
+│ ✓  ReadFile shopify_agent/graph.py                                                                                                              │
+│                                                                                                                                                 │
+│                                                                                                                                                 │
+│ ✓  ReadFile shopify_agent/tools.py                                                                                                              │
+│                                                                                                                                                 │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+✦ He analizado tu código y he identificado los tres puntos clave para la migración a Hugging Face:
+
+   1. settings.py: Necesitamos añadir una variable para tu Hugging Face Token.
+   2. graph.py: Cambiaremos ChatOpenAI por ChatHuggingFace (o HuggingFaceEndpoint) para el agente.
+   3. tools.py: Cambiaremos OpenAIEmbeddings por una solución de Hugging Face. Nota importante: Si cambias el modelo de embeddings, los vectores
+      actuales en tu base de datos (generados con text-embedding-3-small) no serán compatibles. Para evitar romper el RAG, te sugiero usar el modelo
+      BAAI/bge-small-en-v1.5 o similar via API, o bien re-ingestar el catálogo (puedo ayudarte con eso después).
+
+  Primero, revisemos tus dependencias actuales para instalar langchain-huggingface. Pero antes, voy a verificar qué modelos están disponibles y son
+  recomendados para tu caso. Para mantener la "calidad y efectividad", usaremos Qwen/Qwen2.5-72B-Instruct (excelente para herramientas) o
+  meta-llama/Llama-3.3-70B-Instruct.
+
+  Empecemos actualizando settings.py y comprobando las dependencias.
+
+  Paso 1: Verificar requirements.txt y actualizar settings.py.
+╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ ✓  ReadFile requirements.txt                                                                                                                    │
+│                                                                                                                                                 │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+✦ Voy a revisar cómo se hizo la ingesta original del catálogo para asegurarme de que el nuevo modelo de embeddings de Hugging Face sea compatible con
+  el esquema de tu base de datos (especialmente la dimensión de los vectores).
+
+  Paso 2: Revisar ingest_catalog.py para verificar la dimensión de los embeddings.
+╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ ✓  ReadFile ingest_catalog.py                                                                                                                   │
+│                                                                                                                                                 │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+✦ He confirmado que usaste text-embedding-3-small para la ingesta, el cual genera vectores de 1536 dimensiones. Al migrar a Hugging Face, los modelos
+  estándar (como MiniLM) usan 384 dimensiones, lo que causaría un error de incompatibilidad en tu base de datos si no re-ingestamos el catálogo.
+
+  Para solucionar esto de forma profesional y mantener la calidad:
+   1. Actualizaré las dependencias: Añadiremos langchain-huggingface y huggingface_hub.
+   2. Configuraremos Hugging Face: Añadiremos tu HUGGINGFACE_API_TOKEN en settings.py.
+   3. Migraremos el LLM: Usaremos Qwen/Qwen2.5-72B-Instruct a través de la API de Inferencia de HF (es gratuito para uso moderado y extremadamente
+      potente para razonamiento y uso de herramientas).
+   4. Migraremos el RAG: Usaremos sentence-transformers/all-MiniLM-L6-v2 (384 dims) por su rapidez y efectividad. 
+       * Importante: Te proporcionaré el comando para limpiar la tabla y re-ingestar el catálogo con el nuevo modelo para que todo funcione
+         perfectamente.
+
+  Empecemos instalando lo necesario y actualizando settings.py.
+
+  Paso 3: Instalar dependencias y actualizar settings.py.
+
+
+  ✦ He actualizado settings.py, graph.py y tools.py manteniendo el código anterior comentado. 
+
+  Importante: Como los embeddings de Hugging Face (all-MiniLM-L6-v2) tienen 384 dimensiones y los de OpenAI que usaste antes tienen 1536, el RAG
+  fallará si intentas buscar algo ahora mismo.
+
+  Para que el RAG vuelva a funcionar, debes:
+   1. Vaciar la tabla product_catalog_embeddings en tu base de datos.
+   2. Re-ingestar el catálogo PDF con el nuevo modelo.
+
+  Voy a actualizar ingest_catalog.py para que esté listo con Hugging Face (también comentando lo anterior).
+
+  Paso 4: Actualizar ingest_catalog.py.
+
+
+  TRUNCATE TABLE product_catalog_embeddings;
+
+ALTER TABLE product_catalog_embeddings 
+ALTER COLUMN embedding TYPE vector(384);
+
+
+
+
+setup mailing:
+
+[accounts.personal]
+email = "team.ecoinput.com@gmail.com"
+display-name = "Tienda La Tablita"
+default = true
+
+#backend.type = "imap"
+backend.type = "none"
+#backend.host = "imap.gmail.com"
+#backend.port = 993
+#backend.encryption.type = "tls"
+#backend.login = "team.ecoinput.com@gmail.com"
+#backend.auth.type = "password"
+#backend.auth.cmd = "cat ~/.config/himalaya/gmail.key"
+
+# Configuración de Envío (SMTP)
+message.send.backend.type = "smtp"
+message.send.backend.host = "smtp.gmail.com"
+message.send.backend.port = 587
+message.send.backend.encryption.type = "start-tls"
+message.send.backend.login = "team.ecoinput.com@gmail.com"
+message.send.backend.auth.type = "password"
+message.send.backend.auth.cmd = "cat ~/.config/himalaya/gmail.key"
+
+
+# Desactiva el intento de guardar una copia en la carpeta "Enviados" vía IMAP
+message.send.save-copy = false
+
+
+
+
+no hagas ninguna mejora aún, ¿sabes si en LangGraph existe otra manera de resolver este tipo de problema?, porque quizás tambien el Agente me       
+   responde con datos de conversaciones anteriores y accediendo a su memoria que persisten en base de datos.                                           
+▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+✦ Tienes toda la razón en tu sospecha. Como Senior AI Software Engineer, te confirmo que lo que estás experimentando es un problema clásico de gestión
+  de estado persistente en LangGraph.
+
+  Cuando usas AsyncPostgresSaver, LangGraph guarda todo el historial de mensajes en la base de datos vinculado a un thread_id. Si en una conversación
+  anterior (hace 10 mensajes o 2 días) el Agente consultó el stock y era "25", ese dato queda grabado en el historial. El LLM, al intentar ser
+  eficiente y ahorrar tokens, lee el historial y dice: "Ah, ya sé el stock, está en los mensajes anteriores", y te responde eso en lugar de llamar a la
+  herramienta de nuevo.
+
+  Aquí tienes las 3 formas "nativas" de LangGraph para resolver esto sin simplemente cambiar el prompt:
+
+  1. Message Trimming (Recorte de Mensajes) - La más recomendada
+  Es la práctica estándar para evitar que el Agente use información obsoleta. Consiste en limitar cuántos mensajes del pasado puede ver el modelo.
+   * Cómo funciona: Antes de enviar los mensajes al LLM, pasas el historial por un filtro que solo deja los últimos N mensajes o que elimina los
+     resultados de herramientas antiguas.
+   * Ventaja: Reduce costos de tokens y elimina "ruido" de datos viejos.
+
+  2. State Redaction (Limpieza de Estado)
+  En LangGraph puedes definir nodos que "limpien" o reseteen partes del estado (AgentState). 
+   * Cómo funciona: Podríamos tener un campo en el estado llamado last_verified_stock. Si la pregunta del usuario es sobre stock, un nodo intermedio
+     borra cualquier valor previo de ese campo para forzar al Agente a buscar de nuevo.
+   * Ventaja: Control total sobre qué datos son "volátiles" y cuáles son "persistentes".
+
+  3. Configuraciones Dinámicas (Configurable Fields)
+  Puedes pasar parámetros en el config de la invocación para forzar comportamientos.
+   * Cómo funciona: Al llamar a graph.ainvoke, podrías pasar un flag refresh_data: True. El código del Agente vería este flag y, si existe, ignoraría
+     el historial de herramientas anteriores.
+   * Ventaja: Permite que el usuario o el sistema decidan cuándo la información debe ser "fresca".
+
+  4. Semantic Search sobre la Memoria (Long-term vs Short-term)
+  En lugar de pasar todo el historial, se usa una base de datos vectorial para recuperar solo los mensajes relevantes. 
+   * Cómo funciona: Se separa la "memoria de trabajo" (mensajes actuales) de la "memoria histórica". 
+   * Ventaja: Ideal para conversaciones extremadamente largas, pero puede ser complejo de implementar.
+
+  ---
+
+  Mi análisis técnico para tu caso:
+  El problema es que el LLM está tratando los resultados de las herramientas como hechos permanentes en lugar de datos volátiles. 
+
+  ¿Te gustaría que te explique cómo implementar el Message Trimming (Opción 1)? Es la solución más limpia en LangGraph porque garantiza que el Agente
+  solo tenga presente el contexto reciente, obligándolo a usar las herramientas para obtener datos actuales como el stock.
+
+  He aplicado una corrección estructural en shopify_agent/tools.py para resolver el problema del RAG sin afectar a ninguna otra funcionalidad.
+
+  Cambios realizados:
+   1. Aumento de Rango (LIMIT 10): He duplicado el número de fragmentos que el sistema busca en la base de datos. Esto aumenta significativamente la
+      probabilidad de encontrar la información exacta sobre los ingredientes y la temperatura.
+   2. Protocolo de Error Estricto: Ahora, si la base de datos no devuelve resultados, la herramienta responde con un código de error interno
+      (ERROR_RAG) instruyendo al modelo a no inventar datos.
+   3. Encabezado Informativo: He añadido un encabezado claro a la respuesta de la herramienta: INFORMACIÓN TÉCNICA DEL CATÁLOGO PDF. Esto ayuda al LLM
+      a priorizar estos datos sobre su conocimiento general.
+
+  Por qué esto soluciona el bug:
+  El modelo inventaba datos porque recibía una respuesta vacía o poco relevante. Con 10 fragmentos y una instrucción clara de no inventar si no hay
+  datos, el Agente ahora se verá obligado a usar la información real de tu ingesta.
+
+  Prueba ahora: Pregúntale "¿Cuáles son los ingredientes y la temperatura del queso con especias?". Debería traerte los datos exactos del PDF. Si no
+  los encuentra, te dirá que no lo sabe en lugar de inventar.
+
+  ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+✦ Analizando los logs, el problema es crítico: el sistema de búsqueda (RAG) se activa correctamente, genera los vectores con Hugging Face
+  (all-MiniLM-L6-v2), pero la base de datos devuelve cero resultados (No se encontraron fragmentos relevantes). 
+
+  Esto suele ocurrir por una de estas tres razones técnicas:
+   1. Malla de Datos: El catálogo no se ingesto correctamente tras el cambio de dimensiones.
+   2. Operador de Búsqueda: El operador <=> (distancia de coseno) podría estar filtrando todo si los vectores no están normalizados.
+   3. Namespace/Tabla: Podría haber un problema con la tabla product_catalog_embeddings.
+
+  Voy a realizar una verificación y ajuste en tools.py para diagnosticar y resolver esto sin romper nada.
+
+  Paso 1: Verificar el estado de la base de datos y robustecer la consulta en shopify_agent/tools.py.

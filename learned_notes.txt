@@ -1,0 +1,44 @@
+
+Estos días he estado trabajando en el desarrollo de un Agente de IA Conversacional(ChatBot) y es la mejor manera aplicando mis conocimientos adquiridos sobre Agentic Systems
+en la Especialización de ML de .... y estas son mis conclusiones y aprendizajes hasta ahora.
+
+
+¿Qué resuelve?
+Reduce carga laboral, aumenta la satisfacción del cliente (CSAT) y resuelve(por ahora) las siguientes tareas:
+- Saber rápidamente el stock de un SKU/ISBN y solicitar resposición al proveedor.
+- Saber información detalla de un producto y que no aparece en la página pública.
+- Saber el estado de un pedido en Shopify y según solicitud del cliente.
+- Solicitar cancelación de un pedido, restaurar stock, hacer reembolso y notificar al cliente y negocio.
+
+Consideraciones técnicas:
+
+Manejo de Memoria y Contexto Agéntico:
+- Utilicé Message Trimming para evitar que el LLM acceda a data de anteriores conversaciones para el ahorro de tokens,
+y así no responda con data estática y persistente a una pregunta con data dinámica como lo es el stock de un producto en
+una Tienda Online Shopify.
+
+RAG:
+- Al seleccionar el LLM embedding para la ingesta Agentic RAG, considerar
+la generación de vectores según el número de dimensiones del LLM, mientras más
+dimensiones, mayores características y más rica es la descripción del objeto durante una consulta.
+
+- Existe un posible riesgo si se cambia de Inference API Serverless provider y con el modelo
+de embedding porque si se hizo la ingesta, en Base de Datos ya se generaron los vectores por ejemplo de 1536 dimensiones
+
+- Para el Agente orquestador(ReAct), utilicé Qwen/Qwen2.5-72B-Instruct como LLM generativo que es potente para razonamiento y el uso de Tools.
+
+- Para el flujo de RAG, utilicé sentence-transformers/all-MiniLM-L6-v2 como LLM embedding con 384 dims. por su rapidez y efectividad. 
+
+- Para hacer trade-offs de LLM embedding y seleccionar el más conveniente, existe un recurso muy útil llamado RTEB de Hugging Face, dejo en enlace en primer comentario.
+
+
+- Utilicé un LLM generativo 
+
+Agentic Pattern:
+- ReAct es el Agentic Pattern que utilice, 
+
+Observabilidad del Agentic System mediante LangSmith:
+- 
+
+
+

@@ -1,7 +1,8 @@
 import os
+import logging
 from typing import Literal
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage
+from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
+from langchain_core.messages import SystemMessage, trim_messages
 from langgraph.graph import StateGraph, END, START
 from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
@@ -11,22 +12,53 @@ from .tools import tools
 from .prompts import SYSTEM_PROMPT
 from .settings import settings
 
+# Logger para el Grafo
+logger = logging.getLogger("SHOPIFY-AGENT")
+
 # 1. Registrar todas las herramientas disponibles
 tool_node = ToolNode(tools)
 
 # 2. Configurar el LLM
-llm = ChatOpenAI(
-    model="gpt-4o-mini",
-    api_key=settings.ai_api_key,
-    base_url="https://models.inference.ai.azure.com",
-    temperature=0,
-).bind_tools(tools)
+llm_hf = HuggingFaceEndpoint(
+    repo_id="Qwen/Qwen2.5-72B-Instruct",
+    task="chat-completion",
+    huggingfacehub_api_token=settings.huggingface_api_token,
+    temperature=0.01,
+)
+llm = ChatHuggingFace(llm=llm_hf).bind_tools(tools)
 
-# 3. Nodos del Grafo
+# 3. Configurar el Trimmer (Recortador de mensajes)
+# Esto mantendrá solo los últimos 10 mensajes, asegurando que el contexto sea fresco.
+# Incluimos siempre el SystemMessage por fuera del recorte.
+trimmer = trim_messages(
+    strategy="last",
+    max_tokens=15, # Aumentado de 10 a 15 para dar más contexto al RAG
+    token_counter=len,
+    include_system=False,
+    start_on="human",
+)
+
+
+# 4. Nodo del Agente
+
+
 async def call_model(state: AgentState, config):
-    messages = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
+    """
+    Decide si llamar a herramientas o responder al usuario.
+    Aplica Message Trimming para evitar usar datos obsoletos del historial.
+    """
+    # Recortamos el historial de mensajes del estado
+    trimmed_history = trimmer.invoke(state["messages"])
+
+    # Construimos el prompt final: System Prompt + Historial Recortado
+    messages = [SystemMessage(content=SYSTEM_PROMPT)] + trimmed_history
+
+    logger.info(
+        f"--- LLAMADA AL MODELO: Enviando {len(messages)} mensajes (Trimming aplicado) ---")
+
     response = await llm.ainvoke(messages, config)
     return {"messages": [response]}
+
 
 def should_continue(state: AgentState) -> Literal["tools", END]:
     last_message = state["messages"][-1]
@@ -34,7 +66,8 @@ def should_continue(state: AgentState) -> Literal["tools", END]:
         return "tools"
     return END
 
-# 4. Configurar el flujo (Sin compilar todavía)
+
+# 5. Configurar el flujo
 workflow = StateGraph(AgentState)
 workflow.add_node("agent", call_model)
 workflow.add_node("tools", tool_node)
@@ -42,19 +75,21 @@ workflow.add_edge(START, "agent")
 workflow.add_conditional_edges("agent", should_continue)
 workflow.add_edge("tools", "agent")
 
-# 5. Configuración de persistencia diferida
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost/shopify_agent_db")
+# 6. Configuración de persistencia
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", "postgresql://user:pass@localhost/shopify_agent_db")
 if "postgresql+asyncpg://" in DATABASE_URL:
-    DATABASE_URL = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgresql+asyncpg://", "postgresql://")
 
-pool = AsyncConnectionPool(conninfo=DATABASE_URL, max_size=20, kwargs={"autocommit": True}, open=False)
+pool = AsyncConnectionPool(conninfo=DATABASE_URL, max_size=20, kwargs={
+                           "autocommit": True}, open=False)
 
-# Variables globales que se inicializarán en el lifespan de FastAPI
 graph = None
 checkpointer = None
 
+
 async def init_graph():
-    """Inicializa el pool, el checkpointer y compila el grafo dentro de un loop de asyncio."""
     global graph, checkpointer
     if graph is None:
         await pool.open()

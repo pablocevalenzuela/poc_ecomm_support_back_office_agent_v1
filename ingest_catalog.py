@@ -36,15 +36,23 @@ def ingest_pdf(file_path: str):
     chunks = text_splitter.split_text(text)
     print(f"Fragmentos generados: {len(chunks)}")
 
-    # 3. Generar Embeddings con GitHub Models (Azure Inference)
-    # Usamos text-embedding-3-small (el estándar de alta calidad disponible en GitHub Models)
-    embeddings_model = OpenAIEmbeddings(
-        model="text-embedding-3-small",
-        api_key=settings.ai_api_key,
-        base_url="https://models.inference.ai.azure.com" # Endpoint de GitHub Models
+    # 3. Generar Embeddings
+    # Usamos text-embedding-3-small (Anteriormente con GitHub Models)
+    # from langchain_openai import OpenAIEmbeddings
+    # embeddings_model = OpenAIEmbeddings(
+    #     model="text-embedding-3-small",
+    #     api_key=settings.ai_api_key,
+    #     base_url="https://models.inference.ai.azure.com"
+    # )
+
+    # Nuevo modelo con Hugging Face (Inferencia API) - Corregido a HuggingFaceEndpointEmbeddings
+    from langchain_huggingface import HuggingFaceEndpointEmbeddings
+    embeddings_model = HuggingFaceEndpointEmbeddings(
+        model="sentence-transformers/all-MiniLM-L6-v2",
+        huggingfacehub_api_token=settings.huggingface_api_token
     )
 
-    print("Generando vectores (esto puede tardar unos segundos)...")
+    print("Generando vectores con Hugging Face (esto puede tardar unos segundos)...")
     embeddings = embeddings_model.embed_documents(chunks)
 
     # 4. Subir a Supabase (pgvector)

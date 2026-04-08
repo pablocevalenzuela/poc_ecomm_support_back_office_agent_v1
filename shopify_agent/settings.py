@@ -15,8 +15,16 @@ class Settings(BaseSettings):
     # AI Credentials
     github_token: str = ""
     openai_api_key: str = ""
+    huggingface_api_token: str = ""
     
-    # LangSmith (se cargan automáticamente vía os.environ, pero las definimos para validación)
+    # Email Settings (Gmail App Password)
+    smtp_server: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = "" # Tu correo de Gmail
+    smtp_password: str = "" # Tu Clave de Aplicación de Gmail
+    admin_email: str = "" # Email donde recibirás las solicitudes de aprobación
+
+    # LangSmith
     langsmith_tracing: str = "false"
     langsmith_api_key: str = ""
     langsmith_project: str = "shopify-agent-backoffice"
@@ -29,7 +37,7 @@ class Settings(BaseSettings):
 
     @property
     def ai_api_key(self) -> str:
-        return self.github_token or self.openai_api_key
+        return self.huggingface_api_token or self.github_token or self.openai_api_key
 
     class Config:
         env_file = ".env.develop"
