@@ -12,6 +12,20 @@ casos borde(edge case) pendientes de resolver:
 Bugs pendientes por resolver:
 1- Flujo RAG no responde con data de embedding.
 
+Features pendientes:
+- evaluar si se implementó o no Funciones reductoras para el crecimiento del estado.
+
+
+
+preguntas:
+
+dame el stock del queso con especias
+
+dame los ingredientes del mismo producto y a que temperatura debo guardarlo
+
+dame el estado del pedido 1003
+
+cancela el pedido 1003
 
 
 
