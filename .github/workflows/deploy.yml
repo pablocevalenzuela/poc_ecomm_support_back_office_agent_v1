@@ -60,6 +60,7 @@ jobs:
           ENV_VARS="$ENV_VARS~SHOPIFY_STORE_NAME=${{ secrets.SHOPIFY_STORE_NAME }}"
           ENV_VARS="$ENV_VARS~SHOPIFY_ADMIN_ACCESS_TOKEN=${{ secrets.SHOPIFY_ADMIN_ACCESS_TOKEN }}"
           ENV_VARS="$ENV_VARS~SHOPIFY_API_VERSION=${{ secrets.SHOPIFY_API_VERSION }}"
+          ENV_VARS="$ENV_VARS~HUGGINGFACE_API_TOKEN=${{ secrets.HUGGINGFACE_API_TOKEN }}"
           ENV_VARS="$ENV_VARS~GITHUB_TOKEN=${{ secrets.GH_TOKEN }}"
           
           gcloud run deploy ${{ env.SERVICE_NAME }} \
