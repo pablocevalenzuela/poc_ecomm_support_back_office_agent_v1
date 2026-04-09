@@ -1,7 +1,8 @@
 import gradio as gr
 import asyncio
 import logging
-from shopify_agent.graph import init_graph # Importamos la función de inicialización
+# Importamos la función de inicialización
+from shopify_agent.graph import init_graph
 from langchain_core.messages import HumanMessage, AIMessage
 
 # 1. Configuración de Logging de Consola
@@ -18,7 +19,7 @@ async def predict(message, history):
 
     # Obtenemos el grafo (se inicializa si es necesario)
     graph = await init_graph()
-    
+
     if graph is None:
         return "Error: El sistema de IA no se ha inicializado correctamente."
 
@@ -74,8 +75,11 @@ async def predict(message, history):
 # Interfaz de Gradio
 demo = gr.ChatInterface(
     fn=predict,
-    title="e-commerce back-office support Agent (DEBUG MODE)",
-    description="Ask to stock, order status and much more."
+    # title="e-commerce back-office support Agent (DEBUG MODE)",
+    # title="Tu Asistente Virtual en - La Tablita - (DEBUG MODE)",
+    # title="Asistente Virtual Atención Al Cliente - La Tablita - (DEBUG MODE)",
+    title="Agente de IA para el Back Office de La Tablita (Versión Beta 1.0)",
+    description="Pregúntame sobre el stock, cancelación y el estado de un pedido, información privada y detallada de un producto(SKU/ISBN) y mucho más."
 )
 
 if __name__ == "__main__":
