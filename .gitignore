@@ -1,4 +1,11 @@
+# local setup
 GEMINI.md
+.venv/
+
+# Secrets
 .env.develop
 .env.production
+
+# Feedback
 notes.txt
+learned_notes.txt
