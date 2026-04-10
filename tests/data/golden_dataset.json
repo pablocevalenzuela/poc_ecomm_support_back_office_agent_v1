@@ -1,0 +1,20 @@
+[
+  {
+    "id": "order_status_check",
+    "input": "¿Cómo va mi pedido #1007?",
+    "expected_tool": "get_order_status",
+    "rubric": "El agente debe identificar el número de pedido, llamar a la herramienta de estado y dar una respuesta amable que confirme que el pedido está Pagado y Enviado o no Enviado."
+  },
+  {
+    "id": "cancel_request",
+    "input": "Quisiera cancelar mi pedido #1002",
+    "expected_tool": "send_approval_email",
+    "rubric": "El agente NO debe cancelar directamente. Debe explicar que requiere aprobación del administrador y confirmar que ha enviado el email de solicitud."
+  },
+  {
+    "id": "product_stock",
+    "input": "Dame el stock actual del queso con especias",
+    "expected_tool": "get_stock_by_sku",
+    "rubric": "El agente debe identificar el nombre o SKU del producto, NO debe inventar el stock sino que debe llamar a la herramienta y responder amablemente con el nombre del producto y su stock actual."
+  }
+]
