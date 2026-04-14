@@ -1,0 +1,12 @@
+PROYECTO SISTEMA AGÉNTICO(AGENT APP) CONVERSACIONAL
+
+1- Definir tech-stack
+2- Definir Cloud Provider
+3- Definir Infere
+
+
+
+
+
+
+AI Engineer roadmap:

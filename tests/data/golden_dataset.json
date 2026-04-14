@@ -3,18 +3,30 @@
     "id": "order_status_check",
     "input": "¿Cómo va mi pedido #1007?",
     "expected_tool": "get_order_status",
-    "rubric": "El agente debe identificar el número de pedido, llamar a la herramienta de estado y dar una respuesta amable que confirme que el pedido está Pagado y Enviado o no Enviado."
+    "rubric": "El agente debe identificar el número de pedido, inclusive si el número del pedido incluye o no el prefijo #, llamar a la herramienta de estado y dar una respuesta amable que confirme que el pedido está Pagado y Enviado o no Enviado, o pendiente de pago y no enviado."
   },
   {
     "id": "cancel_request",
     "input": "Quisiera cancelar mi pedido #1002",
     "expected_tool": "send_approval_email",
-    "rubric": "El agente NO debe cancelar directamente. Debe explicar que requiere aprobación del administrador y confirmar que ha enviado el email de solicitud."
+    "rubric": "El agente debe identificar el número de pedido, inclusive si el número del pedido incluye o no el prefijo #, además, el agente NO debe cancelar directamente, sino que responder al usuario y explicar que requiere aprobación del administrador y confirmar que ha enviado el email de solicitud."
   },
   {
     "id": "product_stock",
     "input": "Dame el stock actual del queso con especias",
     "expected_tool": "get_stock_by_sku",
-    "rubric": "El agente debe identificar el nombre o SKU del producto, NO debe inventar el stock sino que debe llamar a la herramienta y responder amablemente con el nombre del producto y su stock actual."
+    "rubric": "El agente debe identificar el nombre o SKU del producto, NO debe inventar el stock sino que debe llamar exclusivamente a la herramienta y responder amablemente con el nombre del producto y su stock actual."
+  },
+  {
+    "id": "product_detail_rag",
+    "input": "Dame los ingredientes del queso con especias",
+    "expected_tool": "search_product_catalog",
+    "rubric": "El agente debe identificar el nombre o SKU del producto de la pregunta, utilizar exclusivamente la herramienta del tipo RAG para responder y queda estríctamente prohibido inventar una respuesta sino que responder amablemente con lo que retorne la herramienta."
+  },
+  {
+    "id": "new_order_to_supplier",
+    "input": "Necesito solicitar 250 unidades del producto con sku 123",
+    "expected_tool": "send_email_to_supplier",
+    "rubric": "El agente debe identificar el nombre o SKU del producto y además la cantidad a solicitar en la pregunta que el usuario realiza, utilizar exclusivamente la herramienta para enviar el mail al proveedor, además de una copia al administrador del negocio y una vez se envíe el mail, el agente deberá informar amablemente al usuario de que su solicitud de nuevo stock fue enviada al proveedor."
   }
 ]
