@@ -1,8 +1,29 @@
-PROYECTO SISTEMA AGÉNTICO(AGENT APP) CONVERSACIONAL
+######PROYECTO DE SISTEMA AGÉNTICO(AGENTE DE IA) CONVERSACIONAL######
 
-1- Definir tech-stack
-2- Definir Cloud Provider
-3- Definir Infere
+
+Definir problemática a resolver con un Agentic System(Agente de IA):
+1- Back-office eCommerce.
+2- Definir PoC.
+
+Especificaciones Tech/Trade-offs:
+1- Tech-stack(Python, FastAPI)
+2- Cloud Computing Provider(GCP)
+3- Inference Serverless API(HF)
+4- Agentic Pattern(ReAct)
+5- BAAS(Supabase)
+6- Testing/QA para Lógica Racional y Deterministica.
+7- CI/CD Pipeline para el despliegue a GCP(Google Cloud Provider)
+En desarrollo......
+
+
+
+
+
+
+
+
+
+
 
 
 

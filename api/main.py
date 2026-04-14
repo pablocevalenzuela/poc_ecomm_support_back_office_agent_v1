@@ -7,6 +7,8 @@ from langchain_core.messages import HumanMessage
 from contextlib import asynccontextmanager
 import os
 
+APP_VERSION = os.getenv("APP_VERSION", "v0.0.0-dev")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Lógica de inicio asíncrona
@@ -33,6 +35,7 @@ class ChatRequest(BaseModel):
 async def root():
     return {
         "status": "ok", 
+        "version": APP_VERSION,
         "message": "Shopify Agent API & UI Active",
         "endpoints": {
             "ui": "/ui",
