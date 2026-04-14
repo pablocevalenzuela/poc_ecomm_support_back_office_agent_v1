@@ -2,6 +2,8 @@ name: Deploy Unified Shopify Agent to Cloud Run
 
 on:
   push:
+    branches: [ main, develop ]
+  pull_request:
     branches: [ main ]
     paths:
       - 'api/**'
@@ -12,6 +14,7 @@ on:
       - '.github/workflows/**'
 
 env:
+# ... (resto igual)
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   SERVICE_NAME: ${{ secrets.CLOUD_RUN_SERVICE_NAME || 'shopify-agent' }}
   REGION: ${{ secrets.GCP_REGION || 'us-central1' }}
@@ -50,34 +53,51 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     permissions:
-      contents: 'read'
+      contents: 'write' # Necesario para crear Tags
       id-token: 'write'
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Necesario para que el tagger vea el historial
+
+      - name: Generate Tag
+        id: tag_version
+        uses: anothrNick/github-tag-action@1.67.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: true
+          PRERELEASE: ${{ github.ref_name == 'develop' }}
+          PRERELEASE_SUFFIX: dev
+          DEFAULT_BUMP: patch
 
       - name: Authenticate to Google Cloud
+        if: github.ref == 'refs/heads/main'
         uses: 'google-github-actions/auth@v2'
         with:
           workload_identity_provider: "${{ secrets.GCP_WIF_PROVIDER }}"
           service_account: "${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}"
 
       - name: Set up Google Cloud SDK
+        if: github.ref == 'refs/heads/main'
         uses: 'google-github-actions/setup-gcloud@v2'
         with:
           project_id: "${{ env.PROJECT_ID }}"
 
       - name: Build and Push container image
+        if: github.ref == 'refs/heads/main'
         run: |
-          IMAGE_TAG="gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          # Usamos el Tag generado para la imagen
+          IMAGE_TAG="gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ steps.tag_version.outputs.new_tag }}"
           gcloud builds submit . \
             --tag $IMAGE_TAG \
             --project=${{ env.PROJECT_ID }}
 
       - name: Deploy to Cloud Run
+        if: github.ref == 'refs/heads/main'
         run: |
-          IMAGE_TAG="gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          IMAGE_TAG="gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ steps.tag_version.outputs.new_tag }}"
           
           # Definición de variables de entorno (Configuración de LangSmith validada)
           ENV_VARS="^~^LANGSMITH_TRACING=true"
@@ -91,6 +111,7 @@ jobs:
           ENV_VARS="$ENV_VARS~SHOPIFY_API_VERSION=${{ secrets.SHOPIFY_API_VERSION }}"
           ENV_VARS="$ENV_VARS~HUGGINGFACE_API_TOKEN=${{ secrets.HUGGINGFACE_API_TOKEN }}"
           ENV_VARS="$ENV_VARS~GITHUB_TOKEN=${{ secrets.GH_TOKEN }}"
+          ENV_VARS="$ENV_VARS~APP_VERSION=${{ steps.tag_version.outputs.new_tag }}"
           
           gcloud run deploy ${{ env.SERVICE_NAME }} \
             --image $IMAGE_TAG \
