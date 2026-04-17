@@ -7,7 +7,7 @@
   },
   {
     "id": "cancel_request",
-    "input": "Quisiera cancelar mi pedido #1002",
+    "input": "Quisiera cancelar mi pedido #1007",
     "expected_tool": "send_approval_email",
     "rubric": "El agente debe identificar el número de pedido, inclusive si el número del pedido incluye o no el prefijo #, además, el agente NO debe cancelar directamente, sino que responder al usuario y explicar que requiere aprobación del administrador y confirmar que ha enviado el email de solicitud."
   },

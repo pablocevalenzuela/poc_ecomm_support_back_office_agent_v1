@@ -28,11 +28,11 @@ llm_hf = HuggingFaceEndpoint(
 llm = ChatHuggingFace(llm=llm_hf).bind_tools(tools)
 
 # 3. Configurar el Trimmer (Recortador de mensajes)
-# Esto mantendrá solo los últimos 10 mensajes, asegurando que el contexto sea fresco.
-# Incluimos siempre el SystemMessage por fuera del recorte.
+# Esto mantiene el contexto necesario pero limita el costo.
+# Usamos 'len' como aproximación inicial, pero elevamos el límite para mejor RAG.
 trimmer = trim_messages(
     strategy="last",
-    max_tokens=15, # Aumentado de 10 a 15 para dar más contexto al RAG
+    max_tokens=40, 
     token_counter=len,
     include_system=False,
     start_on="human",
@@ -45,16 +45,18 @@ trimmer = trim_messages(
 async def call_model(state: AgentState, config):
     """
     Decide si llamar a herramientas o responder al usuario.
-    Aplica Message Trimming para evitar usar datos obsoletos del historial.
+    Aplica Message Trimming para optimizar el ROI de tokens.
     """
     # Recortamos el historial de mensajes del estado
+    initial_msg_count = len(state["messages"])
     trimmed_history = trimmer.invoke(state["messages"])
+    final_msg_count = len(trimmed_history) + 1 # +1 por el SystemMessage
 
     # Construimos el prompt final: System Prompt + Historial Recortado
     messages = [SystemMessage(content=SYSTEM_PROMPT)] + trimmed_history
 
     logger.info(
-        f"--- LLAMADA AL MODELO: Enviando {len(messages)} mensajes (Trimming aplicado) ---")
+        f"--- LLAMADA MODELO | Mensajes: {initial_msg_count} -> {final_msg_count} (Trimming) ---")
 
     response = await llm.ainvoke(messages, config)
     return {"messages": [response]}

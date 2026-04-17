@@ -48,8 +48,9 @@ def translate_shopify_status(status_type: str, value: str) -> str:
 @tool
 async def get_order_status(order_name: str) -> str:
     """
-    Consulta el estado REAL y actual de un pedido en Shopify. 
-    SIEMPRE usa esta herramienta antes de responder sobre el estado de un pedido.
+    Consulta el estado REAL y sincronizado de un pedido en Shopify. 
+    Es OBLIGATORIO usar esta herramienta antes de informar sobre cualquier pedido. 
+    Al responder, confirma al usuario que has 'verificado en el sistema de Shopify'.
     """
     clean_name = str(order_name).replace("#", "").strip()
     logger.info(f"--- CONSULTA REAL SHOPIFY: Pedido {clean_name} ---")
@@ -95,6 +96,7 @@ async def get_order_status(order_name: str) -> str:
 async def cancel_shopify_order(order_id: str, reason: str = "CUSTOMER") -> str:
     """
     Ejecuta la cancelación de un pedido en Shopify realmente vía GraphQL.
+    Esta es una acción crítica que requiere confirmación previa.
     """
     clean_name = str(order_id).replace("#", "").strip()
     logger.info(
@@ -163,7 +165,10 @@ async def cancel_shopify_order(order_id: str, reason: str = "CUSTOMER") -> str:
 
 @tool
 async def send_approval_email(order_name: str, reason: str) -> str:
-    """Envía correo al administrador para aprobación."""
+    """
+    Envía correo al administrador para aprobación de cancelación. 
+    Informa al usuario que has enviado la solicitud vía email al administrador.
+    """
     if not settings.smtp_user or not settings.admin_email:
         return "Error: Configuración de email incompleta en .env."
 
@@ -186,7 +191,11 @@ async def send_approval_email(order_name: str, reason: str) -> str:
 
 @tool
 async def send_email_to_supplier(cant: int, sku: str) -> str:
-    """Envía correo al proveedor solicitando más stock."""
+    """
+    Envía un correo electrónico formal al proveedor solicitando nuevo stock. 
+    Al usar esta herramienta, informa al usuario que la solicitud se ha procesado 
+    'a través del sistema de correos' para asegurar transparencia total.
+    """
     if not settings.smtp_user or not settings.admin_email:
         return "Error: Configuración de email incompleta en .env."
 
@@ -210,7 +219,7 @@ async def send_email_to_supplier(cant: int, sku: str) -> str:
 
 @tool
 async def send_customer_cancellation_email(order_name: str, customer_email: str) -> str:
-    """Envía notificación formal al cliente con copia al administrador."""
+    """Envía notificación formal de cancelación al cliente."""
     subject = f"Actualización de tu pedido {order_name} - Cancelado"
     body = f"Hola,\n\nTe informamos que tu pedido {order_name} ha sido cancelado exitosamente.\n\nSaludos,\nEquipo de La Tablita."
 
@@ -232,7 +241,8 @@ async def send_customer_cancellation_email(order_name: str, customer_email: str)
 @tool
 async def search_product_catalog(query: str) -> str:
     """
-    Busca información técnica detallada sobre productos en el catálogo PDF.
+    Busca información técnica (ingredientes, elaboración) en el catálogo PDF mediante RAG. 
+    Al responder, menciona explícitamente que la información proviene del 'catálogo técnico de productos'.
     """
     logger.info(f"--- RAG: Iniciando búsqueda en catálogo para: '{query}' ---")
     embeddings_model = HuggingFaceEndpointEmbeddings(
@@ -280,7 +290,10 @@ async def search_product_catalog(query: str) -> str:
 
 @tool
 async def get_stock_by_sku(product_name_or_sku: str) -> str:
-    """Consulta stock disponible en Shopify."""
+    """
+    Consulta el stock disponible en Shopify. 
+    Confirma al usuario que has 'consultado el inventario de Shopify' al dar la respuesta.
+    """
     query = "query($q: String!) { productVariants(first: 5, query: $q) { edges { node { displayName inventoryQuantity sku } } } }"
     async with httpx.AsyncClient() as client:
         try:
@@ -293,7 +306,7 @@ async def get_stock_by_sku(product_name_or_sku: str) -> str:
 
 @tool
 async def get_shopify_product_details(inventory_item_id: str):
-    """Obtiene detalles técnicos de un ítem de inventario."""
+    """Obtiene detalles técnicos de un ítem de inventario en Shopify."""
     gid = f"gid://shopify/InventoryItem/{inventory_item_id}" if not str(
         inventory_item_id).startswith("gid://") else inventory_item_id
     query = "query($id: ID!) { inventoryItem(id: $id) { sku variant { title product { title vendor } } } }"
