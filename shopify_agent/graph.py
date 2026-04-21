@@ -32,7 +32,7 @@ llm = ChatHuggingFace(llm=llm_hf).bind_tools(tools)
 # Usamos 'len' como aproximación inicial, pero elevamos el límite para mejor RAG.
 trimmer = trim_messages(
     strategy="last",
-    max_tokens=40, 
+    max_tokens=10000,
     token_counter=len,
     include_system=False,
     start_on="human",
@@ -50,7 +50,7 @@ async def call_model(state: AgentState, config):
     # Recortamos el historial de mensajes del estado
     initial_msg_count = len(state["messages"])
     trimmed_history = trimmer.invoke(state["messages"])
-    final_msg_count = len(trimmed_history) + 1 # +1 por el SystemMessage
+    final_msg_count = len(trimmed_history) + 1  # +1 por el SystemMessage
 
     # Construimos el prompt final: System Prompt + Historial Recortado
     messages = [SystemMessage(content=SYSTEM_PROMPT)] + trimmed_history

@@ -50,7 +50,7 @@ async def get_order_status(order_name: str) -> str:
     """
     Consulta el estado REAL y sincronizado de un pedido en Shopify. 
     Es OBLIGATORIO usar esta herramienta antes de informar sobre cualquier pedido. 
-    Al responder, confirma al usuario que has 'verificado en el sistema de Shopify'.
+    Al responder, confirma al usuario que has 'verificado en Shopify'.
     """
     clean_name = str(order_name).replace("#", "").strip()
     logger.info(f"--- CONSULTA REAL SHOPIFY: Pedido {clean_name} ---")
@@ -192,7 +192,7 @@ async def send_approval_email(order_name: str, reason: str) -> str:
 @tool
 async def send_email_to_supplier(cant: int, sku: str) -> str:
     """
-    Envía un correo electrónico formal al proveedor solicitando nuevo stock. 
+    Envía un correo electrónico formal al proveedor solicitando nuevo stock de un producto y además una copia del mismo correo electrónico al administrador del negocio. 
     Al usar esta herramienta, informa al usuario que la solicitud se ha procesado 
     'a través del sistema de correos' para asegurar transparencia total.
     """
@@ -212,7 +212,7 @@ async def send_email_to_supplier(cant: int, sku: str) -> str:
             server.starttls()
             server.login(settings.smtp_user, settings.smtp_password)
             server.send_message(msg)
-        return f"Email de solicitud enviado al administrador ({settings.admin_email})."
+        return f"Email de solicitud enviado al proveedor y al administrador ({settings.admin_email})."
     except Exception as e:
         return f"Error al enviar email: {str(e)}"
 
@@ -242,7 +242,7 @@ async def send_customer_cancellation_email(order_name: str, customer_email: str)
 async def search_product_catalog(query: str) -> str:
     """
     Busca información técnica (ingredientes, elaboración) en el catálogo PDF mediante RAG. 
-    Al responder, menciona explícitamente que la información proviene del 'catálogo técnico de productos'.
+    Al responder, menciona explícitamente que la información proviene de la 'Documentación oficial y técnica del producto'.
     """
     logger.info(f"--- RAG: Iniciando búsqueda en catálogo para: '{query}' ---")
     embeddings_model = HuggingFaceEndpointEmbeddings(
