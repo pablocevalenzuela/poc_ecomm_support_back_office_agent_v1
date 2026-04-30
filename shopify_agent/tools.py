@@ -241,8 +241,8 @@ async def send_customer_cancellation_email(order_name: str, customer_email: str)
 @tool
 async def search_product_catalog(query: str) -> str:
     """
-    Busca información técnica (ingredientes, elaboración) en el catálogo PDF mediante RAG. 
-    Al responder, menciona explícitamente que la información proviene de la 'Documentación oficial y técnica del producto'.
+    Busca información técnica sobre un proveedor, un producto(ingredientes, información de contacto del proveedor y datos técnicos de los productos del catálogo de un proveedor) en el catálogo PDF mediante RAG. 
+    Al responder, menciona explícitamente que la información proviene de la 'Documentación oficial y técnica del proveedor y su catálogo de productos'.
     """
     logger.info(f"--- RAG: Iniciando búsqueda en catálogo para: '{query}' ---")
     embeddings_model = HuggingFaceEndpointEmbeddings(

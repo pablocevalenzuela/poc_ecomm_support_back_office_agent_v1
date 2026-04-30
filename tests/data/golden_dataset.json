@@ -24,6 +24,18 @@
     "rubric": "El agente debe identificar el nombre o SKU del producto de la pregunta, utilizar exclusivamente la herramienta del tipo RAG para responder y queda estríctamente prohibido inventar una respuesta sino que responder amablemente con lo que retorne la herramienta."
   },
   {
+    "id": "product_information_rag",
+    "input": "Dame el paletizado del queso con especias con sku 2121212111",
+    "expected_tool": "search_product_catalog",
+    "rubric": "El agente debe identificar el nombre o SKU del producto de la pregunta, utilizar exclusivamente la herramienta del tipo RAG para responder y queda estríctamente prohibido inventar una respuesta sino que responder amablemente con lo que retorne la herramienta."
+  },
+  {
+    "id": "supplier_information_rag",
+    "input": "Dame información de contacto del proveedor lechería río claro",
+    "expected_tool": "search_product_catalog",
+    "rubric": "El agente debe identificar el nombre o identificación del proveedor en la pregunta, utilizar exclusivamente la herramienta del tipo RAG para responder y queda estríctamente prohibido inventar una respuesta sino que responder amablemente con lo que retorne la herramienta."
+  },
+  {
     "id": "new_order_to_supplier",
     "input": "Necesito solicitar 250 unidades del queso nimbus con sku 3829389283",
     "expected_tool": "send_email_to_supplier",
