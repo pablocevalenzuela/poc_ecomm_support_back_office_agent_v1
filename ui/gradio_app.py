@@ -96,5 +96,6 @@ demo = gr.ChatInterface(
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 7860))
+    # this is a test
     logger.info(f"Iniciando servidor local en http://0.0.0.0:{port}")
     demo.launch(server_name="0.0.0.0", server_port=port)
