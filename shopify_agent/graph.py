@@ -32,8 +32,9 @@ llm = ChatHuggingFace(llm=llm_hf).bind_tools(tools)
 # Usamos 'len' como aproximación inicial, pero elevamos el límite para mejor RAG.
 trimmer = trim_messages(
     strategy="last",
-    max_tokens=10000,
-    token_counter=len,
+    # max_tokens=10000,
+    max_tokens=15,  # Keep only the last 15 messages.
+    token_counter=len,  # Aquí len contará mensajes si se aplica a la lista
     include_system=False,
     start_on="human",
 )
@@ -59,6 +60,16 @@ async def call_model(state: AgentState, config):
         f"--- LLAMADA MODELO | Mensajes: {initial_msg_count} -> {final_msg_count} (Trimming) ---")
 
     response = await llm.ainvoke(messages, config)
+
+    # Extraer metadatos de consumo
+    usage = response.response_metadata.get("token_usage", {})
+    if usage:
+        prompt_tokens = usage.get("prompt_tokens", 0)
+        completion_tokens = usage.get("completion_tokens", 0)
+        total_tokens = usage.get("total_tokens", 0)
+        logger.info(
+            f"📊 TOKEN CONSUMPTION: Input: {prompt_tokens} | Output: {completion_tokens} | Total: {total_tokens}")
+
     return {"messages": [response]}
 
 

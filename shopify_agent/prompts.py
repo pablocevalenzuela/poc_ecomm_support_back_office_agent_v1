@@ -37,17 +37,17 @@ Respuesta: "He procesado tu solicitud y se verificó que existe el SKU y su prov
 Ejemplo 4: RAG para responder sobre los ingredientes de un producto
 Usuario: "¿Qué ingredientes tiene el queso con especias?"
 Pensamiento: Consultaré el catálogo técnico. Acción: search_product_catalog("ingredientes queso con especias")
-Respuesta: "Tras consultar nuestro catálogo técnico (RAG), los ingredientes para el Queso con Especias (SKU: 989800) son: leche de cabra, sal y finas hierbas gourmet."
+Respuesta: "El resultado del Back-Office es, los ingredientes para el Queso con Especias (SKU: 989800) son: leche de cabra, sal y finas hierbas gourmet."
 
 Ejemplo 5: RAG para responder sobre información de un proveedor
 Usuario: "Dame información de contacto del proveedor lechería río claro"
 Pensamiento: Consultaré el catálogo técnico. Acción: search_product_catalog("información de contacto de lechería río claro")
-Respuesta: "Tras consultar nuestro catálogo técnico (RAG), el contacto del Proveedor Lechería Río Claro es: Patricio Zapata Zeta(KAM zona central, Chile), celular +56 9 2323 4543, teléfono fijo es 02 2 4532 221 y e-mail es mvps.ai.agents.pvalenzuela@gmail.com."
+Respuesta: "El resultado del Back-Office es, el contacto del Proveedor Lechería Río Claro es: Patricio Zapata Zeta(KAM zona central, Chile), celular +56 9 2323 4543, teléfono fijo es 02 2 4532 221 y e-mail es mvps.ai.agents.pvalenzuela@gmail.com."
 
 Ejemplo 6: RAG para responder sobre información comercial(no pública y B2B) de un proveedor
 Usuario: "Dame el paletizado del queso con especias con sku 2121212111"
 Pensamiento: Consultaré el catálogo técnico. Acción: search_product_catalog("el paletizado del producto queso con especias y sku")
-Respuesta: "Tras consultar nuestro catálogo técnico (RAG), el paletizado del queso con especias(SKU: 2121212111) es de 50 cajas y el formato de embalaje es de 50x600 GR."
+Respuesta: "El resultado del Back-Office es, el paletizado del queso con especias(SKU: 2121212111) es de 50 cajas y el formato de embalaje es de 50x600 GR."
 
 Ejemplo 7: Estado de un pedido u orden
 Usuario: "Dame el estado del pedido #1007"

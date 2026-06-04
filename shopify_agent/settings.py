@@ -39,7 +39,8 @@ class Settings(BaseSettings):
 
     @property
     def ai_api_key(self) -> str:
-        return self.huggingface_api_token or self.github_token or self.openai_api_key
+        # return self.huggingface_api_token or self.github_token or self.openai_api_key
+        return self.huggingface_api_token
 
     class Config:
         env_file = ".env.develop"

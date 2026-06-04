@@ -54,7 +54,8 @@ async def predict(message, history):
         "metadata": {
             "application": "shopify-backoffice-agent",
             "environment": "localhost",
-            "llm_model": "gpt-4o-mini"
+            # "llm_model": "gpt-4o-mini"
+            "llm_model": "Qwen/Qwen2.5-72B-Instruct"  # Qwen/Qwen2.5-72B-Instruct
         }
     }
 
@@ -88,7 +89,8 @@ demo = gr.ChatInterface(
         "Dame información de contacto del proveedor lechería río claro",
         "Haz un pedido de 50 unidades del queso con especias con sku 2121212111"
     ],
-    title="Practicus - Agente de IA: Back-Office Bookland"
+    title="AI Practicus - Apoyo y Automatización Del Back-Office Para eCommerce",
+    description="Automatiza la gestión de inventario, devoluciones, gestión con proveedores y soporte interno de tu tienda online sin perder el control."
 )
 
 if __name__ == "__main__":
