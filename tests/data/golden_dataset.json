@@ -25,7 +25,7 @@
   },
   {
     "id": "product_information_rag",
-    "input": "Dame el paletizado del queso con especias con sku 2121212111",
+    "input": "Dame el código SAP y el paletizado del sku 2121212111",
     "expected_tool": "search_product_catalog",
     "rubric": "El agente debe identificar el nombre o SKU del producto de la pregunta, utilizar exclusivamente la herramienta del tipo RAG para responder y queda estríctamente prohibido inventar una respuesta sino que responder amablemente con lo que retorne la herramienta."
   },

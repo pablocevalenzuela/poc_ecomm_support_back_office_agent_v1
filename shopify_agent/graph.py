@@ -28,13 +28,12 @@ llm_hf = HuggingFaceEndpoint(
 llm = ChatHuggingFace(llm=llm_hf).bind_tools(tools)
 
 # 3. Configurar el Trimmer (Recortador de mensajes)
-# Esto mantiene el contexto necesario pero limita el costo.
-# Usamos 'len' como aproximación inicial, pero elevamos el límite para mejor RAG.
+# Usamos un límite de mensajes más estricto para asegurar economía de tokens.
+# En un entorno de producción ideal, aquí usaríamos tiktoken.
 trimmer = trim_messages(
     strategy="last",
-    # max_tokens=10000,
-    max_tokens=15,  # Keep only the last 15 messages.
-    token_counter=len,  # Aquí len contará mensajes si se aplica a la lista
+    max_tokens=15, 
+    token_counter=len, 
     include_system=False,
     start_on="human",
 )
