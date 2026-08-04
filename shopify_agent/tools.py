@@ -236,13 +236,24 @@ async def send_customer_cancellation_email(order_name: str, customer_email: str)
         return f"Error al notificar al cliente: {str(e)}"
 
 
+# IMPLEMENTACIÓN ANTERIOR (Comentada para registro)
+# @tool
+# async def search_product_catalog(query: str) -> str:
+#     """
+#     Busca datos técnicos/B2B en el catálogo PDF.
+#     Informa el resultado iniciando con 'He consultado el Catálogo Técnico:'.
+#     """
+
+# Nueva implementación con docstring enriquecido para guiar al modelo en consultas B2B/RAG:
 @tool
 async def search_product_catalog(query: str) -> str:
     """
-    Busca datos técnicos/B2B en el catálogo PDF.
-    Informa el resultado iniciando con 'He consultado el Catálogo Técnico:'.
+    Busca en el catálogo de proveedores, precios al por mayor (mayorista),
+    códigos SAP, códigos SKU, empaques, paletizado, unidades disponibles para compra, o inventario de proveedores.
+    Informa el resultado iniciando con 'He consultado el Catálogo De Proveedores(Lista De Precios):'.
     """
-    logger.info(f"--- RAG: Iniciando búsqueda en catálogo para: '{query}' ---")
+    logger.info(
+        f"--- RAG: Iniciando búsqueda en catálogo de proveedores para: '{query}' ---")
     embeddings_model = HuggingFaceEndpointEmbeddings(
         model="sentence-transformers/all-MiniLM-L6-v2", huggingfacehub_api_token=settings.huggingface_api_token)
     try:
@@ -266,13 +277,13 @@ async def search_product_catalog(query: str) -> str:
                     fallback_rows = await cur.fetchall()
                     if fallback_rows:
                         context = "\n---\n".join([r[0] for r in fallback_rows])
-                        return f"He consultado el Catálogo Técnico:\n\n{context}"
+                        return f"He consultado el Catálogo De Proveedores:\n\n{context}"
 
-                    return "He consultado el Catálogo Técnico: No se encontró información específica."
+                    return "He consultado el Catálogo De Proveedores: No se encontró información específica."
 
                 logger.info(f"RAG: Éxito. {len(rows)} fragmentos recuperados.")
                 context = "\n---\n".join([row[0] for row in rows])
-                return f"He consultado el Catálogo Técnico, aquí está la información:\n\n{context}"
+                return f"He consultado el Catálogo De Proveedores, aquí está la información:\n\n{context}"
     except Exception as e:
         logger.error(f"RAG Error: {str(e)}")
         return f"Error técnico al acceder al catálogo: {str(e)}"
@@ -291,9 +302,10 @@ async def get_stock_by_sku(product_name_or_sku: str) -> str:
             edges = r.json().get("data", {}).get("productVariants", {}).get("edges", [])
             if not edges:
                 return "He verificado en el Sistema Shopify: No hay stock disponible para este producto."
-            
+
             res = "He verificado en el Sistema Shopify: El stock disponible es:\n"
-            res += "\n".join([f"- {e['node']['displayName']}: {e['node']['inventoryQuantity']} unidades (SKU: {e['node']['sku']})" for e in edges])
+            res += "\n".join(
+                [f"- {e['node']['displayName']}: {e['node']['inventoryQuantity']} unidades (SKU: {e['node']['sku']})" for e in edges])
             return res
         except Exception as e:
             return str(e)

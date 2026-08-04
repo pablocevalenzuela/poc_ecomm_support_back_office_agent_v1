@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     shopify_admin_access_token: str = ""
 
     # AI Credentials
+    llm_provider: str = "huggingface"
     github_token: str = ""
     openai_api_key: str = ""
     huggingface_api_token: str = ""
@@ -39,7 +40,11 @@ class Settings(BaseSettings):
 
     @property
     def ai_api_key(self) -> str:
-        # return self.huggingface_api_token or self.github_token or self.openai_api_key
+        provider = self.llm_provider.lower().strip()
+        if provider == "openai":
+            return self.openai_api_key
+        elif provider == "github":
+            return self.github_token
         return self.huggingface_api_token
 
     class Config:

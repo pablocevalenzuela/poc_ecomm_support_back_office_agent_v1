@@ -1,7 +1,8 @@
 import os
 import logging
 from typing import Literal
-from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
+# IMPLEMENTACIÓN ANTERIOR (Comentada para registro)
+# from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from langchain_core.messages import SystemMessage, trim_messages
 from langgraph.graph import StateGraph, END, START
 from langgraph.prebuilt import ToolNode
@@ -11,6 +12,7 @@ from .state import AgentState
 from .tools import tools
 from .prompts import SYSTEM_PROMPT
 from .settings import settings
+from .llm_factory import get_llm
 
 # Logger para el Grafo
 logger = logging.getLogger("SHOPIFY-AGENT")
@@ -19,21 +21,25 @@ logger = logging.getLogger("SHOPIFY-AGENT")
 tool_node = ToolNode(tools)
 
 # 2. Configurar el LLM
-llm_hf = HuggingFaceEndpoint(
-    repo_id="Qwen/Qwen2.5-72B-Instruct",
-    task="chat-completion",
-    huggingfacehub_api_token=settings.huggingface_api_token,
-    temperature=0.01,
-)
-llm = ChatHuggingFace(llm=llm_hf).bind_tools(tools)
+# IMPLEMENTACIÓN ANTERIOR (Comentada para registro)
+# llm_hf = HuggingFaceEndpoint(
+#     repo_id="Qwen/Qwen2.5-72B-Instruct",
+#     task="chat-completion",
+#     huggingfacehub_api_token=settings.huggingface_api_token,
+#     temperature=0.01,
+# )
+# llm = ChatHuggingFace(llm=llm_hf).bind_tools(tools)
+
+# Nueva implementación con Fábrica Desacoplada:
+llm = get_llm(purpose="agent", temperature=0.01, tools=tools)
 
 # 3. Configurar el Trimmer (Recortador de mensajes)
 # Usamos un límite de mensajes más estricto para asegurar economía de tokens.
 # En un entorno de producción ideal, aquí usaríamos tiktoken.
 trimmer = trim_messages(
     strategy="last",
-    max_tokens=15, 
-    token_counter=len, 
+    max_tokens=15,
+    token_counter=len,
     include_system=False,
     start_on="human",
 )

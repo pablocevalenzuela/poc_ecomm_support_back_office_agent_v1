@@ -6,8 +6,10 @@ from shopify_agent.graph import init_graph
 from shopify_agent.settings import settings
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
+from shopify_agent.llm_factory import get_llm
 
 # CONFIGURACIÓN DEL JUEZ (Hugging Face)
+"""
 judge_llm_hf = HuggingFaceEndpoint(
     repo_id="Qwen/Qwen2.5-72B-Instruct",
     task="chat-completion",
@@ -15,6 +17,10 @@ judge_llm_hf = HuggingFaceEndpoint(
     temperature=0.01,
 )
 judge_llm = ChatHuggingFace(llm=judge_llm_hf)
+"""
+
+judge_llm = get_llm(purpose="judge", temperature=0.01)
+
 
 # --- MATRIZ DE PRECIOS REALES (USD por 1M tokens - Estimación Qwen 2.5 72B) ---
 PRICES = {
@@ -130,10 +136,12 @@ async def run_senior_benchmark():
                         t_name = tc['name']
                         t_args = tc.get('args', {})
                         print(f"   [🛠️ TOOL CALL]: {t_name}({t_args})")
-                        stats["tool_usage"][t_name] = stats["tool_usage"].get(t_name, 0) + 1
+                        stats["tool_usage"][t_name] = stats["tool_usage"].get(
+                            t_name, 0) + 1
 
                 elif last_msg.type == "tool":
-                    print(f"   [📥 TOOL RES ({last_msg.name})]: {str(last_msg.content)[:150]}...")
+                    print(
+                        f"   [📥 TOOL RES ({last_msg.name})]: {str(last_msg.content)[:150]}...")
 
                 if last_msg.type == "ai" and not last_msg.tool_calls:
                     final_msg = last_msg.content

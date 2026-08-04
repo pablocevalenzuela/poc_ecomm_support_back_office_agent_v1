@@ -89,7 +89,7 @@ demo = gr.ChatInterface(
         "Dame información de contacto del proveedor lechería río claro",
         "Haz un pedido de 50 unidades del queso con especias con sku 2121212111"
     ],
-    title="AI Practicus - Apoyo y Automatización Del Back-Office Para eCommerce",
+    title="Asistente De Chatbot Para Negocios De eCommerce",
     description="Automatiza la gestión de inventario, devoluciones, gestión con proveedores y soporte interno de tu tienda online sin perder el control."
 )
 

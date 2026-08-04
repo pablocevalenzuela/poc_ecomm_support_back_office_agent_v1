@@ -1,26 +1,8 @@
 [
   {
-    "id": "order_status_check",
-    "input": "Dame el estado del pedido #1012",
-    "expected_tool": "get_order_status",
-    "rubric": "El agente debe identificar el número de pedido, inclusive si el número del pedido incluye o no el prefijo #, llamar a la herramienta de estado y dar una respuesta amable que confirme que el pedido está Pagado y Enviado o no Enviado, o pendiente de pago y no enviado."
-  },
-  {
-    "id": "product_stock",
-    "input": "Dame el stock del queso con especias",
-    "expected_tool": "get_stock_by_sku",
-    "rubric": "El agente debe identificar el nombre o SKU del producto, NO debe inventar el stock sino que debe llamar exclusivamente a la herramienta y responder amablemente con el nombre del producto y su stock actual."
-  },
-  {
-    "id": "product_information_rag",
-    "input": "dame el codigo SAP y detalles del embalaje para el sku 2121212111",
+    "id": "wholesale_price_product_information_rag",
+    "input": "dame el precio mayorista del sku 2121212112, paletizado, código SAP, formato de embalaje y unidades disponibles",
     "expected_tool": "search_product_catalog",
-    "rubric": "El agente debe identificar el nombre o SKU del producto de la pregunta y así acceder al código SAP y detalle del embalaje del sku o nombre del producto, utilizar exclusivamente la herramienta del tipo RAG para responder y queda estríctamente prohibido inventar una respuesta sino que responder amablemente con lo que retorne la herramienta."
-  },
-  {
-    "id": "supplier_information_rag",
-    "input": "Dame información de contacto del proveedor lechería río claro del producto de sku 2121212111",
-    "expected_tool": "search_product_catalog",
-    "rubric": "El agente debe identificar el nombre o identificación del proveedor en la pregunta según el sku o nombre del producto en la pregunta y así acceder a información del proveedor para ese producto, utilizar exclusivamente la herramienta del tipo RAG para responder y queda estríctamente prohibido inventar una respuesta sino que responder amablemente con lo que retorne la herramienta."
+    "rubric": "El agente debe identificar el nombre o código SKU o código SAP del producto de la pregunta y así acceder al precio mayorista, paletizado, formato de embalaje y unidades disponibles del producto de interés y según su SKU, código SAP o su nombre, utilizar exclusivamente la herramienta del tipo RAG para responder y queda estríctamente prohibido inventar una respuesta sino que responder amablemente con lo que retorne la herramienta."
   }
 ]
