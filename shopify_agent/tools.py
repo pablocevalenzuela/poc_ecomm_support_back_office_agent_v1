@@ -48,8 +48,8 @@ def translate_shopify_status(status_type: str, value: str) -> str:
 @tool
 async def get_order_status(order_name: str) -> str:
     """
-    Consulta el estado REAL y actual de un pedido en Shopify. 
-    SIEMPRE usa esta herramienta antes de responder sobre el estado de un pedido.
+    Consulta el estado REAL y sincronizado de un pedido en Shopify. 
+    Informa el resultado iniciando con 'He verificado en el Sistema Shopify:'.
     """
     clean_name = str(order_name).replace("#", "").strip()
     logger.info(f"--- CONSULTA REAL SHOPIFY: Pedido {clean_name} ---")
@@ -76,7 +76,7 @@ async def get_order_status(order_name: str) -> str:
             edges = data.get("data", {}).get("orders", {}).get("edges", [])
 
             if not edges:
-                return f"No encontré el pedido {order_name} en Shopify."
+                return f"He verificado en el Sistema Shopify: No encontré el pedido {order_name}."
 
             order = edges[0]["node"]
             p_status = translate_shopify_status(
@@ -86,7 +86,7 @@ async def get_order_status(order_name: str) -> str:
             cust = order.get("customer")
             nombre = f"{cust['firstName']} {cust['lastName']}" if cust else "Cliente"
 
-            return f"ESTADO ACTUAL (Sincronizado): Pedido {order['name']} de {nombre}. Pago: {p_status}. Envío: {f_status}."
+            return f"He verificado en el Sistema Shopify: El Pedido {order['name']} de {nombre} está {p_status} y {f_status}."
         except Exception as e:
             return f"Error al consultar Shopify: {str(e)}"
 
@@ -95,6 +95,7 @@ async def get_order_status(order_name: str) -> str:
 async def cancel_shopify_order(order_id: str, reason: str = "CUSTOMER") -> str:
     """
     Ejecuta la cancelación de un pedido en Shopify realmente vía GraphQL.
+    Esta es una acción crítica que requiere confirmación previa.
     """
     clean_name = str(order_id).replace("#", "").strip()
     logger.info(
@@ -163,7 +164,10 @@ async def cancel_shopify_order(order_id: str, reason: str = "CUSTOMER") -> str:
 
 @tool
 async def send_approval_email(order_name: str, reason: str) -> str:
-    """Envía correo al administrador para aprobación."""
+    """
+    Envía correo al administrador para aprobación de cancelación. 
+    Informa al usuario iniciando con 'Consultando el Sistema de Correos:'.
+    """
     if not settings.smtp_user or not settings.admin_email:
         return "Error: Configuración de email incompleta en .env."
 
@@ -179,14 +183,17 @@ async def send_approval_email(order_name: str, reason: str) -> str:
             server.starttls()
             server.login(settings.smtp_user, settings.smtp_password)
             server.send_message(msg)
-        return f"Email de solicitud enviado al administrador ({settings.admin_email})."
+        return f"Consultando el Sistema de Correos: Email de solicitud enviado al administrador ({settings.admin_email})."
     except Exception as e:
         return f"Error al enviar email: {str(e)}"
 
 
 @tool
 async def send_email_to_supplier(cant: int, sku: str) -> str:
-    """Envía correo al proveedor solicitando más stock."""
+    """
+    Envía un correo electrónico formal al proveedor solicitando nuevo stock.
+    Informa al usuario iniciando con 'Consultando el Sistema de Correos:'.
+    """
     if not settings.smtp_user or not settings.admin_email:
         return "Error: Configuración de email incompleta en .env."
 
@@ -203,14 +210,14 @@ async def send_email_to_supplier(cant: int, sku: str) -> str:
             server.starttls()
             server.login(settings.smtp_user, settings.smtp_password)
             server.send_message(msg)
-        return f"Email de solicitud enviado al administrador ({settings.admin_email})."
+        return f"Consultando el Sistema de Correos: Email de solicitud enviado al proveedor y al administrador ({settings.admin_email})."
     except Exception as e:
         return f"Error al enviar email: {str(e)}"
 
 
 @tool
 async def send_customer_cancellation_email(order_name: str, customer_email: str) -> str:
-    """Envía notificación formal al cliente con copia al administrador."""
+    """Envía notificación formal de cancelación al cliente."""
     subject = f"Actualización de tu pedido {order_name} - Cancelado"
     body = f"Hola,\n\nTe informamos que tu pedido {order_name} ha sido cancelado exitosamente.\n\nSaludos,\nEquipo de La Tablita."
 
@@ -224,17 +231,29 @@ async def send_customer_cancellation_email(order_name: str, customer_email: str)
             server.starttls()
             server.login(settings.smtp_user, settings.smtp_password)
             server.send_message(msg)
-        return f"Notificación enviada al cliente ({customer_email}) y administrador."
+        return f"Consultando el Sistema de Correos: Notificación enviada al cliente ({customer_email}) y administrador."
     except Exception as e:
         return f"Error al notificar al cliente: {str(e)}"
 
 
+# IMPLEMENTACIÓN ANTERIOR (Comentada para registro)
+# @tool
+# async def search_product_catalog(query: str) -> str:
+#     """
+#     Busca datos técnicos/B2B en el catálogo PDF.
+#     Informa el resultado iniciando con 'He consultado el Catálogo Técnico:'.
+#     """
+
+# Nueva implementación con docstring enriquecido para guiar al modelo en consultas B2B/RAG:
 @tool
 async def search_product_catalog(query: str) -> str:
     """
-    Busca información técnica detallada sobre productos en el catálogo PDF.
+    Busca en el catálogo de proveedores, precios al por mayor (mayorista),
+    códigos SAP, códigos SKU, empaques, paletizado, unidades disponibles para compra, o inventario de proveedores.
+    Informa el resultado iniciando con 'He consultado el Catálogo De Proveedores(Lista De Precios):'.
     """
-    logger.info(f"--- RAG: Iniciando búsqueda en catálogo para: '{query}' ---")
+    logger.info(
+        f"--- RAG: Iniciando búsqueda en catálogo de proveedores para: '{query}' ---")
     embeddings_model = HuggingFaceEndpointEmbeddings(
         model="sentence-transformers/all-MiniLM-L6-v2", huggingfacehub_api_token=settings.huggingface_api_token)
     try:
@@ -245,34 +264,26 @@ async def search_product_catalog(query: str) -> str:
             "postgresql+asyncpg://", "postgresql://")
         async with await psycopg.AsyncConnection.connect(db_url) as conn:
             async with conn.cursor() as cur:
-                # DEPURACIÓN: ¿Hay algo en la base de datos?
-                await cur.execute("SELECT count(*) FROM product_catalog_embeddings;")
-                count = await cur.fetchone()
-                logger.info(
-                    f"RAG DIAGNÓSTICO: La base de datos tiene {count[0]} filas.")
-
-                # Búsqueda real
-                # IMPORTANTE: Convertimos el vector a lista de strings para asegurar el casting correcto en PostgreSQL
                 embedding_str = "[" + ",".join(map(str, query_embedding)) + "]"
 
                 await cur.execute(
-                    "SELECT content FROM product_catalog_embeddings ORDER BY embedding <=> %s LIMIT 10;",
+                    "SELECT content FROM product_catalog_embeddings ORDER BY embedding <=> %s LIMIT 6;",
                     (embedding_str,)
                 )
                 rows = await cur.fetchall()
 
                 if not rows:
-                    # SI NO HAY RESULTADOS CON VECTOR, DEVOLVEMOS LO QUE HAYA (Fallback para catálogo pequeño)
-                    await cur.execute("SELECT content FROM product_catalog_embeddings LIMIT 2;")
+                    await cur.execute("SELECT content FROM product_catalog_embeddings LIMIT 3;")
                     fallback_rows = await cur.fetchall()
                     if fallback_rows:
-                        logger.info("RAG: Usando fallback de contenido total.")
-                        return "INFORMACIÓN GENERAL DEL CATÁLOGO:\n\n" + "\n---\n".join([r[0] for r in fallback_rows])
+                        context = "\n---\n".join([r[0] for r in fallback_rows])
+                        return f"He consultado el Catálogo De Proveedores:\n\n{context}"
 
-                    return "No encontré información técnica en el catálogo."
+                    return "He consultado el Catálogo De Proveedores: No se encontró información específica."
 
                 logger.info(f"RAG: Éxito. {len(rows)} fragmentos recuperados.")
-                return "INFORMACIÓN DEL CATÁLOGO PDF:\n\n" + "\n---\n".join([row[0] for row in rows])
+                context = "\n---\n".join([row[0] for row in rows])
+                return f"He consultado el Catálogo De Proveedores, aquí está la información:\n\n{context}"
     except Exception as e:
         logger.error(f"RAG Error: {str(e)}")
         return f"Error técnico al acceder al catálogo: {str(e)}"
@@ -280,20 +291,29 @@ async def search_product_catalog(query: str) -> str:
 
 @tool
 async def get_stock_by_sku(product_name_or_sku: str) -> str:
-    """Consulta stock disponible en Shopify."""
+    """
+    Consulta el stock disponible en Shopify. 
+    Informa el resultado iniciando con 'He verificado en el Sistema Shopify:'.
+    """
     query = "query($q: String!) { productVariants(first: 5, query: $q) { edges { node { displayName inventoryQuantity sku } } } }"
     async with httpx.AsyncClient() as client:
         try:
             r = await client.post(settings.shopify_url, json={"query": query, "variables": {"q": product_name_or_sku}}, headers=HEADERS)
             edges = r.json().get("data", {}).get("productVariants", {}).get("edges", [])
-            return "\n".join([f"- {e['node']['displayName']}: {e['node']['inventoryQuantity']} uds" for e in edges]) if edges else "Sin stock."
+            if not edges:
+                return "He verificado en el Sistema Shopify: No hay stock disponible para este producto."
+
+            res = "He verificado en el Sistema Shopify: El stock disponible es:\n"
+            res += "\n".join(
+                [f"- {e['node']['displayName']}: {e['node']['inventoryQuantity']} unidades (SKU: {e['node']['sku']})" for e in edges])
+            return res
         except Exception as e:
             return str(e)
 
 
 @tool
 async def get_shopify_product_details(inventory_item_id: str):
-    """Obtiene detalles técnicos de un ítem de inventario."""
+    """Obtiene detalles técnicos de un ítem de inventario en Shopify."""
     gid = f"gid://shopify/InventoryItem/{inventory_item_id}" if not str(
         inventory_item_id).startswith("gid://") else inventory_item_id
     query = "query($id: ID!) { inventoryItem(id: $id) { sku variant { title product { title vendor } } } }"

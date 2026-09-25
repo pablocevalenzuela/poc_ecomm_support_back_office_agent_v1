@@ -54,7 +54,8 @@ async def predict(message, history):
         "metadata": {
             "application": "shopify-backoffice-agent",
             "environment": "localhost",
-            "llm_model": "gpt-4o-mini"
+            # "llm_model": "gpt-4o-mini"
+            "llm_model": "Qwen/Qwen2.5-72B-Instruct"  # Qwen/Qwen2.5-72B-Instruct
         }
     }
 
@@ -72,18 +73,29 @@ async def predict(message, history):
         logger.error(f"ERROR CRÍTICO: {str(e)}", exc_info=True)
         return f"Hubo un problema técnico: {str(e)}"
 
-# Interfaz de Gradio
+
+def responder(pregunta, historia):
+    return f"Respuesta de prueba para: {pregunta}"
+
+
+# Configuración del ChatInterface con ejemplos
 demo = gr.ChatInterface(
     fn=predict,
-    # title="e-commerce back-office support Agent (DEBUG MODE)",
-    # title="Tu Asistente Virtual en - La Tablita - (DEBUG MODE)",
-    # title="Asistente Virtual Atención Al Cliente - La Tablita - (DEBUG MODE)",
-    title="Agente de IA para el Back Office de La Tablita (Versión Beta 1.0)",
-    description="Pregúntame sobre el stock, cancelación y el estado de un pedido, información privada y detallada de un producto(SKU/ISBN) y mucho más."
+    examples=[
+        "Dame el estado del pedido #1013",
+        "Quisiera cancelar el pedido #1013",
+        "Dame el paletizado del queso con especias con sku 2121212111",
+        "¿Cuál es el stock del queso con especias?",
+        "Dame información de contacto del proveedor lechería río claro",
+        "Haz un pedido de 50 unidades del queso con especias con sku 2121212111"
+    ],
+    title="Asistente De Chatbot Para Negocios De eCommerce",
+    description="Automatiza la gestión de inventario, devoluciones, gestión con proveedores y soporte interno de tu tienda online sin perder el control."
 )
 
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 7860))
+    # this is a test
     logger.info(f"Iniciando servidor local en http://0.0.0.0:{port}")
     demo.launch(server_name="0.0.0.0", server_port=port)

@@ -1,0 +1,8 @@
+[
+  {
+    "id": "wholesale_price_product_information_rag",
+    "input": "dame el precio mayorista del sku 2121212112, paletizado, código SAP, formato de embalaje y unidades disponibles",
+    "expected_tool": "search_product_catalog",
+    "rubric": "El agente debe identificar el nombre o código SKU o código SAP del producto de la pregunta y así acceder al precio mayorista, paletizado, formato de embalaje y unidades disponibles del producto de interés y según su SKU, código SAP o su nombre, utilizar exclusivamente la herramienta del tipo RAG para responder y queda estríctamente prohibido inventar una respuesta sino que responder amablemente con lo que retorne la herramienta."
+  }
+]
