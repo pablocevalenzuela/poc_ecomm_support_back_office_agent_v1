@@ -1,0 +1,118 @@
+base line token economy benchmark:
+
+(.venv) Pablos-MacBook-Pro:poc_ecomm_support_back_office_agent_v1 pvalenzuela$ python3 benchmark_agent.py
+
+════════════════════════════════════════════════════════════
+🚀 AUDITORÍA AGÉNTICA HOLÍSTICA (V2 - Costos Reales de Tokens)
+════════════════════════════════════════════════════════════
+
+🔍 EVALUANDO: order_status_check
+   [🛠️ TOOL CALL]: get_order_status
+CASE: order_status_check | Score: 5/5 | Tokens: 5799i/60o | Cost: $0.002054 | ⭐
+
+🔍 EVALUANDO: cancel_request
+   [🛠️ TOOL CALL]: send_approval_email
+CASE: cancel_request | Score: 5/5 | Tokens: 5788i/85o | Cost: $0.002060 | ⭐
+
+🔍 EVALUANDO: product_stock
+   [🛠️ TOOL CALL]: get_stock_by_sku
+CASE: product_stock | Score: 5/5 | Tokens: 5780i/57o | Cost: $0.002046 | ⭐
+
+🔍 EVALUANDO: product_detail_rag
+   [🛠️ TOOL CALL]: search_product_catalog
+CASE: product_detail_rag | Score: 5/5 | Tokens: 6449i/108o | Cost: $0.002300 | ⭐
+
+🔍 EVALUANDO: product_information_rag
+   [🛠️ TOOL CALL]: search_product_catalog
+CASE: product_information_rag | Score: 5/5 | Tokens: 6488i/148o | Cost: $0.002330 | ⭐
+
+🔍 EVALUANDO: supplier_information_rag
+   [🛠️ TOOL CALL]: search_product_catalog
+CASE: supplier_information_rag | Score: 3/5 | Tokens: 6461i/190o | Cost: $0.002337 | 🔴
+
+🔍 EVALUANDO: new_order_to_supplier
+   [🛠️ TOOL CALL]: send_email_to_supplier
+CASE: new_order_to_supplier | Score: 3/5 | Tokens: 5828i/120o | Cost: $0.002088 | 🔴
+
+📊 RESUMEN EJECUTIVO
+✅ SUCCESS RATE: 71.4%
+💰 COSTO TOTAL ESTIMADO: $0.0152 USD
+
+🛠️ FRECUENCIA DE USO DE HERRAMIENTAS:
+  • search_product_catalog   : 3 veces
+  • get_order_status         : 1 veces
+  • send_approval_email      : 1 veces
+  • get_stock_by_sku         : 1 veces
+  • send_email_to_supplier   : 1 veces
+------------------------------------------------------------
+❌ ANÁLISIS DE FALLOS:
+  • supplier_information_rag: La respuesta no menciona que se consultó un sistema real (Shopify, Catálogo), lo que afecta la trans...
+  • new_order_to_supplier: La respuesta no menciona explícitamente que se consultó un sistema real como Shopify o la Base de Da...
+============================================================
+(.venv) Pablos-MacBook-Pro:poc_ecomm_support_back_office_agent_v1 pvalenzuela$ 
+
+
+
+
+nuevo performance TE:
+
+(.venv) Pablos-MacBook-Pro:poc_ecomm_support_back_office_agent_v1 pvalenzuela$ python3 benchmark_agent.py
+
+════════════════════════════════════════════════════════════
+🚀 AUDITORÍA AGÉNTICA HOLÍSTICA (V2 - Costos Reales de Tokens I/O)
+════════════════════════════════════════════════════════════
+
+🔍 EVALUANDO: order_status_check
+   [🛠️ TOOL CALL]: get_order_status({'order_name': '1012'})
+   [📥 TOOL RES (get_order_status)]: He verificado en Shopify: El Pedido #1012 de Juan Perez Potapo está Pagado ✅ y Enviado 🚚....
+   [💬 AGENT RESPONSE]: He verificado en el sistema Shopify: El Pedido #1012 de Juan Perez Potapo está Pagado ✅ y Enviado 🚚....
+CASE: order_status_check | Score: 5/5 | Tokens: 3740i/58o | Cost: $0.001332 | ⭐
+
+🔍 EVALUANDO: product_stock
+   [🛠️ TOOL CALL]: get_stock_by_sku({'product_name_or_sku': 'queso con especias'})
+   [📥 TOOL RES (get_stock_by_sku)]: - Queso con especias - 600: 321 uds...
+   [💬 AGENT RESPONSE]: He verificado en el sistema Shopify: hay 321 unidades de queso con especias....
+CASE: product_stock | Score: 5/5 | Tokens: 3720i/50o | Cost: $0.001322 | ⭐
+
+🔍 EVALUANDO: product_information_rag
+   [🛠️ TOOL CALL]: search_product_catalog({'query': 'SAP embalaje 2121212111'})
+   [📥 TOOL RES (search_product_catalog)]: He consultado la base de datos del catálogo técnico (Información General):
+
+CATÁLOGO  DE  PRODUCTOS  LECHERÍA  RÍO  CLARO   Información  De  Contacto ...
+   [💬 AGENT RESPONSE]: He consultado la base de datos del catálogo técnico: 
+
+- **Código SAP:** 99888838381111
+- **Embalaje:** Flexible tipo almohada, dentro de bolsa o fardo termo-contraíble.
+- **Formato embalaje:** 50x600 GR.
+- **SKU:** 2121212111
+- **Formato en gramos:** 600 g
+- **Precio al por mayor:** $ 2.500 por uni...
+CASE: product_information_rag | Score: 5/5 | Tokens: 4450i/171o | Cost: $0.001626 | ⭐
+
+🔍 EVALUANDO: supplier_information_rag
+   [🛠️ TOOL CALL]: search_product_catalog({'query': 'contacto proveedor lechería río claro sku 2121212111'})
+   [📥 TOOL RES (search_product_catalog)]: He consultado la base de datos del catálogo técnico (Información General):
+
+CATÁLOGO  DE  PRODUCTOS  LECHERÍA  RÍO  CLARO   Información  De  Contacto ...
+   [💬 AGENT RESPONSE]: He consultado la base de datos del catálogo técnico: el contacto del proveedor Lechería Río Claro para el producto con SKU 2121212111 es:
+
+- **Contacto:** Patricio Zapata Zeta
+- **Cargo:** KAM zona central, Chile
+- **Teléfono fijo:** 02 2 4532 221
+- **Celular:** +56 9 2323 4543
+- **E-mail:** mvps.ai...
+CASE: supplier_information_rag | Score: 3/5 | Tokens: 4460i/554o | Cost: $0.001783 | 🔴
+
+📊 RESUMEN EJECUTIVO
+✅ SUCCESS RATE: 75.0%
+💰 COSTO TOTAL ESTIMADO: $0.0061 USD
+
+🛠️ FRECUENCIA DE USO DE HERRAMIENTAS:
+  • search_product_catalog   : 2 veces
+  • get_order_status         : 1 veces
+  • get_stock_by_sku         : 1 veces
+------------------------------------------------------------
+❌ ANÁLISIS DE FALLOS:
+  • supplier_information_rag: La respuesta no menciona que se consultó un sistema real (por ejemplo, el catálogo técnico), lo que ...
+============================================================
+(.venv) Pablos-MacBook-Pro:poc_ecomm_support_back_office_agent_v1 pvalenzuela$ 

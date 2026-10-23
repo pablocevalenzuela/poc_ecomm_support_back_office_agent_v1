@@ -1,7 +1,8 @@
 import os
 import logging
 from typing import Literal
-from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
+# IMPLEMENTACIÓN ANTERIOR (Comentada para registro)
+# from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from langchain_core.messages import SystemMessage, trim_messages
 from langgraph.graph import StateGraph, END, START
 from langgraph.prebuilt import ToolNode
@@ -11,6 +12,7 @@ from .state import AgentState
 from .tools import tools
 from .prompts import SYSTEM_PROMPT
 from .settings import settings
+from .llm_factory import get_llm
 
 # Logger para el Grafo
 logger = logging.getLogger("SHOPIFY-AGENT")
@@ -19,20 +21,24 @@ logger = logging.getLogger("SHOPIFY-AGENT")
 tool_node = ToolNode(tools)
 
 # 2. Configurar el LLM
-llm_hf = HuggingFaceEndpoint(
-    repo_id="Qwen/Qwen2.5-72B-Instruct",
-    task="chat-completion",
-    huggingfacehub_api_token=settings.huggingface_api_token,
-    temperature=0.01,
-)
-llm = ChatHuggingFace(llm=llm_hf).bind_tools(tools)
+# IMPLEMENTACIÓN ANTERIOR (Comentada para registro)
+# llm_hf = HuggingFaceEndpoint(
+#     repo_id="Qwen/Qwen2.5-72B-Instruct",
+#     task="chat-completion",
+#     huggingfacehub_api_token=settings.huggingface_api_token,
+#     temperature=0.01,
+# )
+# llm = ChatHuggingFace(llm=llm_hf).bind_tools(tools)
+
+# Nueva implementación con Fábrica Desacoplada:
+llm = get_llm(purpose="agent", temperature=0.01, tools=tools)
 
 # 3. Configurar el Trimmer (Recortador de mensajes)
-# Esto mantendrá solo los últimos 10 mensajes, asegurando que el contexto sea fresco.
-# Incluimos siempre el SystemMessage por fuera del recorte.
+# Usamos un límite de mensajes más estricto para asegurar economía de tokens.
+# En un entorno de producción ideal, aquí usaríamos tiktoken.
 trimmer = trim_messages(
     strategy="last",
-    max_tokens=15, # Aumentado de 10 a 15 para dar más contexto al RAG
+    max_tokens=15,
     token_counter=len,
     include_system=False,
     start_on="human",
@@ -45,18 +51,30 @@ trimmer = trim_messages(
 async def call_model(state: AgentState, config):
     """
     Decide si llamar a herramientas o responder al usuario.
-    Aplica Message Trimming para evitar usar datos obsoletos del historial.
+    Aplica Message Trimming para optimizar el ROI de tokens.
     """
     # Recortamos el historial de mensajes del estado
+    initial_msg_count = len(state["messages"])
     trimmed_history = trimmer.invoke(state["messages"])
+    final_msg_count = len(trimmed_history) + 1  # +1 por el SystemMessage
 
     # Construimos el prompt final: System Prompt + Historial Recortado
     messages = [SystemMessage(content=SYSTEM_PROMPT)] + trimmed_history
 
     logger.info(
-        f"--- LLAMADA AL MODELO: Enviando {len(messages)} mensajes (Trimming aplicado) ---")
+        f"--- LLAMADA MODELO | Mensajes: {initial_msg_count} -> {final_msg_count} (Trimming) ---")
 
     response = await llm.ainvoke(messages, config)
+
+    # Extraer metadatos de consumo
+    usage = response.response_metadata.get("token_usage", {})
+    if usage:
+        prompt_tokens = usage.get("prompt_tokens", 0)
+        completion_tokens = usage.get("completion_tokens", 0)
+        total_tokens = usage.get("total_tokens", 0)
+        logger.info(
+            f"📊 TOKEN CONSUMPTION: Input: {prompt_tokens} | Output: {completion_tokens} | Total: {total_tokens}")
+
     return {"messages": [response]}
 
 
