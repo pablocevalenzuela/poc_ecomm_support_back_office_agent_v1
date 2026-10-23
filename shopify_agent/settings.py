@@ -14,10 +14,14 @@ class Settings(BaseSettings):
     shopify_admin_access_token: str = ""
 
     # AI Credentials
-    llm_provider: str = "huggingface"
+    llm_provider: str = "openrouter"
     github_token: str = ""
     openai_api_key: str = ""
     huggingface_api_token: str = ""
+    open_router_api_key: str = ""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_agent_model: str = "qwen/qwen-2.5-72b-instruct"
+    openrouter_judge_model: str = "qwen/qwen-2.5-72b-instruct"
 
     # Email Settings (Gmail App Password)
     smtp_server: str = "smtp.gmail.com"
@@ -47,6 +51,8 @@ class Settings(BaseSettings):
             return self.openai_api_key
         elif provider == "github":
             return self.github_token
+        elif provider == "openrouter":
+            return self.open_router_api_key
         return self.huggingface_api_token
 
     class Config:

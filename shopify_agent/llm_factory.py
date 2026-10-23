@@ -13,7 +13,8 @@ def get_llm(purpose: Literal["agent", "judge"], temperature: float = 0.01, tools
     Asegura desacoplamiento de proveedores y facilidad de intercambio de inferencia.
 
     Proveedores soportados:
-    - "huggingface": API de Inferencia de Hugging Face (por defecto, para retrocompatibilidad).
+    - "openrouter": OpenRouter (API compatible de OpenAI, proveedor por defecto).
+    - "huggingface": API de Inferencia de Hugging Face (retrocompatibilidad).
     - "openai": ChatOpenAI oficial de OpenAI utilizando gpt-4o (judge) o gpt-4o-mini (agent).
     - "github": GitHub Models (API compatible de OpenAI, ideal para desarrollo sin costo).
     """
@@ -21,7 +22,25 @@ def get_llm(purpose: Literal["agent", "judge"], temperature: float = 0.01, tools
     logger.info(
         f"Instanciando LLM para '{purpose}' usando proveedor: '{provider}'")
 
-    if provider == "openai":
+    if provider == "openrouter":
+        # OpenRouter expone una API compatible con OpenAI; permite intercambiar
+        # modelos sin cambiar de SDK ni de lógica de herramientas.
+        model_name = (
+            settings.openrouter_judge_model
+            if purpose == "judge"
+            else settings.openrouter_agent_model
+        )
+        llm = ChatOpenAI(
+            model=model_name,
+            temperature=temperature,
+            api_key=settings.open_router_api_key,
+            base_url=settings.openrouter_base_url,
+        )
+        if tools and purpose == "agent":
+            return llm.bind_tools(tools)
+        return llm
+
+    elif provider == "openai":
         # Usamos gpt-4o para tareas críticas de auditoría (judge) y gpt-4o-mini para el agente
         model_name = "gpt-4o" if purpose == "judge" else "gpt-4o-mini"
         llm = ChatOpenAI(
