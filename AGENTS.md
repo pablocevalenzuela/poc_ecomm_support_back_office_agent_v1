@@ -1,5 +1,7 @@
 # AGENTS.md
 
+
+
 Shopify back-office conversational agent (PoC). ReAct loop over LangGraph + FastAPI + Gradio, talking to the Shopify Admin GraphQL API, pgvector RAG on Supabase, and Gmail for HITL approvals. Deployed to GCP Cloud Run.
 
 Docs here are Spanish; this file is English. **Code comments, docstrings, and log messages are Spanish, and all agent/user-facing output is Spanish — keep it that way.**
