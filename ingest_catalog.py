@@ -45,15 +45,12 @@ def ingest_pdf(file_path: str):
     #     base_url="https://models.inference.ai.azure.com"
     # )
 
-    # Nuevo modelo con Hugging Face (Inferencia API) - Corregido a HuggingFaceEndpointEmbeddings
-    from langchain_huggingface import HuggingFaceEndpointEmbeddings
-    embeddings_model = HuggingFaceEndpointEmbeddings(
-        model="sentence-transformers/all-MiniLM-L6-v2",
-        huggingfacehub_api_token=settings.huggingface_api_token
-    )
+    # Embeddings locales (fastembed/ONNX) con el mismo modelo que usaba la API
+    # de inferencia de Hugging Face. Sin token, sin cuota y sin coste.
+    from shopify_agent.embeddings import embed_documents
 
-    print("Generando vectores con Hugging Face (esto puede tardar unos segundos)...")
-    embeddings = embeddings_model.embed_documents(chunks)
+    print("Generando vectores con fastembed en local (esto puede tardar unos segundos)...")
+    embeddings = embed_documents(chunks)
 
     # 4. Subir a Supabase (pgvector)
     db_url = settings.database_url

@@ -7,7 +7,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from langchain_core.tools import tool
-from langchain_huggingface import HuggingFaceEndpointEmbeddings
+from .embeddings import aembed_query
 from .settings import settings
 
 # Configuración de Logger
@@ -254,11 +254,10 @@ async def search_product_catalog(query: str) -> str:
     """
     logger.info(
         f"--- RAG: Iniciando búsqueda en catálogo de proveedores para: '{query}' ---")
-    embeddings_model = HuggingFaceEndpointEmbeddings(
-        model="sentence-transformers/all-MiniLM-L6-v2", huggingfacehub_api_token=settings.huggingface_api_token)
     try:
+        # Embeddings locales (fastembed/ONNX): sin token ni cuota de HF.
         # Generar vector
-        query_embedding = await embeddings_model.aembed_query(query)
+        query_embedding = await aembed_query(query)
 
         db_url = settings.database_url.replace(
             "postgresql+asyncpg://", "postgresql://")
