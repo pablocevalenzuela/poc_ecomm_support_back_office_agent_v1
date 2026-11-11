@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     shopify_admin_access_token: str = ""
 
     # AI Credentials
-    llm_provider: str = "huggingface"
+    llm_provider: str = "openrouter"
     github_token: str = ""
     openai_api_key: str = ""
     huggingface_api_token: str = ""
