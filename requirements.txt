@@ -20,6 +20,7 @@ cryptography==46.0.6
 dataclasses-json==0.6.7
 distro==1.9.0
 fastapi==0.135.3
+fastembed==0.9.1
 ffmpy==1.0.0
 filelock==3.25.2
 frozenlist==1.8.0
@@ -64,6 +65,7 @@ multidict==6.7.1
 mypy_extensions==1.1.0
 numpy==2.4.4
 openai==2.30.0
+openpyxl==3.1.5
 orjson==3.11.8
 ormsgpack==1.12.2
 packaging==26.0

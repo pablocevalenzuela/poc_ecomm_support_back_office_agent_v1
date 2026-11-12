@@ -76,15 +76,11 @@ def ingest_excel(file_path: str, sheet_name: str = None):
 
 def generate_and_store_embeddings(chunks: List[str], file_path: str):
     """
-    Genera embeddings utilizando Hugging Face en lotes (batching) y los almacena en Supabase.
+    Genera embeddings en local (fastembed/ONNX) en lotes y los almacena en Supabase.
     """
-    from langchain_huggingface import HuggingFaceEndpointEmbeddings
-    
-    print("Inicializando modelo de embeddings de Hugging Face...")
-    embeddings_model = HuggingFaceEndpointEmbeddings(
-        model="sentence-transformers/all-MiniLM-L6-v2",
-        huggingfacehub_api_token=settings.huggingface_api_token
-    )
+    from shopify_agent.embeddings import embed_documents
+
+    print("Inicializando modelo de embeddings local (fastembed)...")
 
     print("Estableciendo conexión con Supabase...")
     db_url = settings.database_url
@@ -105,7 +101,7 @@ def generate_and_store_embeddings(chunks: List[str], file_path: str):
                     print(f"Procesando lote {i // batch_size + 1} ({len(batch_chunks)} fragmentos)...")
 
                     # Generar embeddings para este lote
-                    batch_embeddings = embeddings_model.embed_documents(batch_chunks)
+                    batch_embeddings = embed_documents(batch_chunks)
 
                     # Insertar registros de forma masiva en este lote
                     for content, embedding in zip(batch_chunks, batch_embeddings):

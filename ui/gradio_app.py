@@ -1,9 +1,11 @@
 import gradio as gr
 import asyncio
 import logging
+import uuid
 # Importamos la función de inicialización
 from shopify_agent.graph import init_graph
-from langchain_core.messages import HumanMessage, AIMessage
+from shopify_agent.settings import settings
+from langchain_core.messages import HumanMessage
 
 # 1. Configuración de Logging de Consola
 logging.basicConfig(
@@ -14,7 +16,7 @@ logging.basicConfig(
 logger = logging.getLogger("SHOPIFY-AGENT")
 
 
-async def predict(message, history):
+async def predict(message, history, request: gr.Request):
     logger.info(f"--- NUEVA CONSULTA: '{message}' ---")
 
     # Obtenemos el grafo (se inicializa si es necesario)
@@ -23,46 +25,35 @@ async def predict(message, history):
     if graph is None:
         return "Error: El sistema de IA no se ha inicializado correctamente."
 
-    # Convertimos el historial de Gradio a mensajes de LangGraph de forma robusta
-    messages = []
+    # Un hilo de conversación por sesión de navegador. Antes el `thread_id` era
+    # la constante "local-session-001", así que TODAS las conversaciones de la
+    # UI compartían el mismo historial persistido en Postgres y un simple "hola"
+    # heredaba el contexto de la sesión anterior.
+    # `request.session_hash` es único por carga de página; si no hay request
+    # (p. ej. el cacheo de ejemplos), usamos un hilo aislado de un solo turno.
+    session_hash = getattr(request, "session_hash", None)
+    thread_id = f"ui-{session_hash}" if session_hash else f"ui-{uuid.uuid4().hex[:8]}"
 
-    for entry in history:
-        # Formato antiguo: tupla/lista [user, bot]
-        if isinstance(entry, (list, tuple)) and len(entry) == 2:
-            user_text, bot_text = entry
-            if user_text:
-                messages.append(HumanMessage(content=user_text))
-            if bot_text:
-                messages.append(AIMessage(content=bot_text))
-        # Formato nuevo: objeto con atributos role y content (o diccionario)
-        elif hasattr(entry, "role"):
-            if entry.role == "user":
-                messages.append(HumanMessage(content=entry.content))
-            elif entry.role == "assistant":
-                messages.append(AIMessage(content=entry.content))
-        elif isinstance(entry, dict):
-            if entry.get("role") == "user":
-                messages.append(HumanMessage(content=entry.get("content", "")))
-            elif entry.get("role") == "assistant":
-                messages.append(AIMessage(content=entry.get("content", "")))
-
-    messages.append(HumanMessage(content=message))
-
+    # El checkpointer es la única fuente del historial: no reenviamos el
+    # `history` de Gradio, porque al combinarlo con el estado persistido cada
+    # mensaje se guardaba dos veces y el trimmer de 15 mensajes se llenaba de
+    # duplicados.
     # Metadatos para rastreo en LangSmith
     config = {
-        "configurable": {"thread_id": "local-session-001"},
+        "configurable": {"thread_id": thread_id},
         "metadata": {
             "application": "shopify-backoffice-agent",
             "environment": "localhost",
-            # "llm_model": "gpt-4o-mini"
-            "llm_model": "Qwen/Qwen2.5-72B-Instruct"  # Qwen/Qwen2.5-72B-Instruct
+            "llm_model": settings.openrouter_agent_model
+            if settings.llm_provider == "openrouter"
+            else settings.llm_provider,
         }
     }
 
     try:
-        logger.info("Enviando mensajes al Grafo de LangGraph...")
+        logger.info(f"Enviando mensajes al Grafo de LangGraph (hilo: {thread_id})...")
         # Invocamos el grafo con config enriquecido
-        result = await graph.ainvoke({"messages": messages}, config)
+        result = await graph.ainvoke({"messages": [HumanMessage(content=message)]}, config)
         # Extraemos la respuesta final
         final_response = result["messages"][-1].content
 
