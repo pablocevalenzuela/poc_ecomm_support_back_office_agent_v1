@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime, JSON
 from .db import Base
 import datetime
 
+
 class AgentLog(Base):
     __tablename__ = "agent_logs"
 

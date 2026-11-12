@@ -14,9 +14,14 @@ class Settings(BaseSettings):
     shopify_admin_access_token: str = ""
 
     # AI Credentials
+    llm_provider: str = "openrouter"
     github_token: str = ""
     openai_api_key: str = ""
     huggingface_api_token: str = ""
+    open_router_api_key: str = ""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_agent_model: str = "qwen/qwen-2.5-72b-instruct"
+    openrouter_judge_model: str = "qwen/qwen-2.5-72b-instruct"
 
     # Email Settings (Gmail App Password)
     smtp_server: str = "smtp.gmail.com"
@@ -31,7 +36,9 @@ class Settings(BaseSettings):
     langsmith_api_key: str = ""
     langsmith_project: str = "shopify-agent-backoffice"
 
-    database_url: str = "postgresql+asyncpg://user:pass@localhost/shopify_agent_db"
+    #database_url: str = "postgresql+asyncpg://user:pass@localhost/shopify_agent_db"
+    database_url: str = "postgresql+asyncpg://user:pass@localhost/db_poc_ecomm_support_back_office_agent_v1"
+    #DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://user:pass@localhost/db_poc_ecomm_support_back_office_agent_v1")
 
     @property
     def shopify_url(self) -> str:
@@ -39,7 +46,14 @@ class Settings(BaseSettings):
 
     @property
     def ai_api_key(self) -> str:
-        return self.huggingface_api_token or self.github_token or self.openai_api_key
+        provider = self.llm_provider.lower().strip()
+        if provider == "openai":
+            return self.openai_api_key
+        elif provider == "github":
+            return self.github_token
+        elif provider == "openrouter":
+            return self.open_router_api_key
+        return self.huggingface_api_token
 
     class Config:
         env_file = ".env.develop"

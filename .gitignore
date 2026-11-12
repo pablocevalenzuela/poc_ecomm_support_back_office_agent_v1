@@ -1,6 +1,7 @@
 # local setup
-GEMINI.md
 .venv/
+venv/
+.vscode/
 
 # Secrets
 .env.develop
@@ -9,3 +10,8 @@ GEMINI.md
 # Feedback
 notes.txt
 learned_notes.txt
+
+# Byte-compiled / optimized / DLL files
+__pycache__eks/
+*.py[cod]
+*$py.class
