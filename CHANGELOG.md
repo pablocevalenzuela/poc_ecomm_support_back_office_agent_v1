@@ -38,6 +38,11 @@ Rules
 
 - Flujo RAG bloqueado por el 402 de Hugging Face Inference Providers: se habilitó `pgvector`, se
   creó `product_catalog_embeddings` y se reingestó el catálogo (PDF + Excel).
+- UI de Gradio: todas las conversaciones compartían el `thread_id` constante
+  `"local-session-001"`, así que un mensaje nuevo heredaba el historial persistido de sesiones
+  anteriores (escribir "hola" devolvía la última respuesta sobre stock). Ahora cada sesión de
+  navegador usa su propio hilo (`ui-{request.session_hash}`) y el checkpointer es la única fuente
+  del historial: se dejó de reenviar el `history` de Gradio, que duplicaba cada mensaje en el hilo.
 
 <!--
 Add entries below, for example:

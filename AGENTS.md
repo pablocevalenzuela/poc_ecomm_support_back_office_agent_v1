@@ -129,7 +129,11 @@ runs it with mock env vars and no DB, so a red `test` job on that file is pre-ex
 
 `api/main.py` is the single entrypoint: FastAPI with Gradio mounted at `/ui`, `POST /chat` taking
 `{message, session_id}`, `GET /` returning `APP_VERSION`. Those three are the app's own routes.
-`thread_id` for the checkpointer is the client-supplied `session_id`.
+`thread_id` for the checkpointer is the client-supplied `session_id`. The Gradio UI (`ui/gradio_app.py`)
+uses `ui-{request.session_hash}` — one thread per browser session — and relies on the checkpointer as
+the only source of history; it deliberately does **not** resend Gradio's `history`, which would
+duplicate every message in the thread. A shared constant `thread_id` there made every conversation
+inherit the previous one's persisted context.
 
 `shopify_agent/graph.py` is a two-node `agent` ⇄ `tools` ReAct loop over `AgentState` (messages
 only; the other TypedDict keys are unused).

@@ -19,3 +19,5 @@ Rules
 ## Backlog
 
 ## Done
+
+- [x] T-001 — Corregir el hilo compartido de la UI de Gradio (`ui/gradio_app.py`)
